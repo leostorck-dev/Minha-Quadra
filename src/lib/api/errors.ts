@@ -1,0 +1,74 @@
+import { ForbiddenError, UnauthorizedError } from "@/lib/auth/context";
+import { CustomerNotFoundError } from "@/features/customers/service";
+import { CourtNotFoundError } from "@/features/courts/service";
+import {
+  ReservationConflictError,
+  ReservationNotFoundError,
+} from "@/features/reservations/service";
+import { ValidationError } from "@/lib/api/validation-error";
+import { PaymentConflictError } from "@/features/payments/service";
+
+export function privateJson(data: unknown, status = 200) {
+  return Response.json(data, {
+    status,
+    headers: { "Cache-Control": "private, no-store" },
+  });
+}
+
+export function apiError(error: unknown) {
+  if (error instanceof PaymentConflictError) {
+    return privateJson(
+      { error: { code: "PAYMENT_CONFLICT", message: error.message } },
+      409,
+    );
+  }
+  if (error instanceof ReservationConflictError) {
+    return privateJson(
+      { error: { code: "RESERVATION_CONFLICT", message: error.message } },
+      409,
+    );
+  }
+  if (error instanceof ValidationError || error instanceof SyntaxError) {
+    return privateJson(
+      {
+        error: {
+          code: "VALIDATION_ERROR",
+          message:
+            error instanceof ValidationError ? error.message : "JSON inválido.",
+        },
+      },
+      400,
+    );
+  }
+  if (error instanceof UnauthorizedError) {
+    return privateJson(
+      { error: { code: "UNAUTHORIZED", message: error.message } },
+      401,
+    );
+  }
+  if (error instanceof ForbiddenError) {
+    return privateJson(
+      { error: { code: "FORBIDDEN", message: error.message } },
+      403,
+    );
+  }
+  if (
+    error instanceof CustomerNotFoundError ||
+    error instanceof CourtNotFoundError ||
+    error instanceof ReservationNotFoundError
+  ) {
+    return privateJson(
+      { error: { code: "NOT_FOUND", message: error.message } },
+      404,
+    );
+  }
+  return privateJson(
+    {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Não foi possível concluir a operação.",
+      },
+    },
+    500,
+  );
+}

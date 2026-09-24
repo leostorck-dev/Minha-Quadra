@@ -1,0 +1,1 @@
+-- Dados de desenvolvimento serão adicionados após as migrations de tenant e perfil.
