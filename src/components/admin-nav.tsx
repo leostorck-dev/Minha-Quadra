@@ -4,8 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/auth/context";
 
-const upcoming = ["Configurações"];
-
 export function AdminNav({ role }: { role: Role }) {
   const pathname = usePathname();
   const links = [
@@ -18,6 +16,9 @@ export function AdminNav({ role }: { role: Role }) {
           { href: "/finance", label: "Financeiro" },
           { href: "/audit", label: "Auditoria" },
         ]
+      : []),
+    ...(role === "OWNER"
+      ? [{ href: "/settings", label: "Configurações" }]
       : []),
   ];
 
@@ -42,19 +43,6 @@ export function AdminNav({ role }: { role: Role }) {
             >
               {label}
             </Link>
-          ))}
-        </div>
-        <div className="mt-8 border-t border-white/10 pt-6">
-          <p className="px-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-            Próximos módulos
-          </p>
-          {upcoming.map((label) => (
-            <span
-              key={label}
-              className="block px-4 py-3 text-sm text-slate-500"
-            >
-              {label}
-            </span>
           ))}
         </div>
       </nav>

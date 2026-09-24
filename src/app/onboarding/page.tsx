@@ -11,5 +11,14 @@ export default async function OnboardingPage() {
   const context = await getAuthContext();
   if (context) redirect("/dashboard");
 
+  const { data: invite } = await supabase
+    .from("staff_invites")
+    .select("token")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (invite) redirect(`/join?token=${invite.token}`);
+
   return <OnboardingForm />;
 }

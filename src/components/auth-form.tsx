@@ -7,13 +7,27 @@ import { createClient } from "@/lib/supabase/client";
 
 type Mode = "login" | "signup";
 
-export function AuthForm({ mode }: { mode: Mode }) {
+export function AuthForm({
+  mode,
+  inviteToken,
+}: {
+  mode: Mode;
+  inviteToken?: string;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const invite =
+    typeof inviteToken === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      inviteToken,
+    )
+      ? inviteToken
+      : null;
+  const nextPath = invite ? `/join?token=${invite}` : "/dashboard";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,7 +44,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           password,
         });
         if (authError) throw authError;
-        router.replace("/dashboard");
+        router.replace(nextPath);
       } else {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
@@ -42,10 +56,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         if (authError) throw authError;
 
         if (data.session) {
-          router.replace("/onboarding");
+          router.replace(invite ? nextPath : "/onboarding");
         } else {
           setSuccess(
-            "Confira seu email para confirmar a conta antes de entrar.",
+            invite
+              ? "Confira seu email para confirmar a conta. Depois, abra o link do convite novamente."
+              : "Confira seu email para confirmar a conta antes de entrar.",
           );
         }
       }
@@ -78,7 +94,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <p className="mt-2 text-sm text-slate-400">
           {isLogin
             ? "Acesse a gestão da sua arena."
-            : "O próximo passo será cadastrar sua arena."}
+            : invite
+              ? "Crie sua conta para aceitar o convite da equipe."
+              : "O próximo passo será cadastrar sua arena."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -136,7 +154,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <p className="mt-7 text-center text-sm text-slate-400">
           {isLogin ? "Ainda não tem conta? " : "Já tem conta? "}
           <Link
-            href={isLogin ? "/signup" : "/login"}
+            href={`${isLogin ? "/signup" : "/login"}${invite ? `?invite=${invite}` : ""}`}
             className="font-semibold text-lime-400 hover:underline"
           >
             {isLogin ? "Cadastre-se" : "Entrar"}
