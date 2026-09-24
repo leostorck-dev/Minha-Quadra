@@ -30,6 +30,7 @@ const fieldLabels: Record<string, string> = {
   email: "email",
   birthDate: "nascimento",
   notes: "observações",
+  tags: "etiquetas",
   status: "situação",
   court: "quadra",
   customer: "cliente",

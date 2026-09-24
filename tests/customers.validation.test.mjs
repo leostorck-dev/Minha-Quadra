@@ -15,6 +15,7 @@ test("aceita cliente com telefone e normaliza espaços", () => {
   assert.equal(result.name, "Ana Silva");
   assert.equal(result.phone, "(11) 99999-9999");
   assert.equal(result.email, null);
+  assert.deepEqual(result.tags, []);
 });
 
 test("exige contato e rejeita identidade enviada pelo cliente", () => {
@@ -54,11 +55,35 @@ test("rejeita data impossível e email inválido", () => {
 });
 
 test("valida paginação e filtro de status", () => {
-  assert.deepEqual(parseCustomerSearch(" Ana ", "2", "inactive"), {
-    query: "Ana",
-    page: 2,
-    status: "inactive",
-  });
+  assert.deepEqual(
+    parseCustomerSearch(" Ana ", "2", "inactive", " Mensalista "),
+    {
+      query: "Ana",
+      page: 2,
+      status: "inactive",
+      tag: "mensalista",
+    },
+  );
   assert.throws(() => parseCustomerSearch("", "0", null), ValidationError);
   assert.throws(() => parseCustomerSearch("", "1", "deleted"), ValidationError);
+});
+
+test("normaliza etiquetas e rejeita duplicatas", () => {
+  assert.deepEqual(
+    parseCustomerCreate({
+      name: "Ana Silva",
+      email: "ana@example.com",
+      tags: [" Mensalista ", "VIP"],
+    }).tags,
+    ["mensalista", "vip"],
+  );
+  assert.deepEqual(parseCustomerUpdate({ tags: [] }).tags, []);
+  assert.throws(
+    () => parseCustomerUpdate({ tags: ["VIP", "vip"] }),
+    ValidationError,
+  );
+  assert.throws(
+    () => parseCustomerUpdate({ tags: Array(11).fill("etiqueta") }),
+    ValidationError,
+  );
 });

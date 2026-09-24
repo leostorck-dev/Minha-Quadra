@@ -20,6 +20,7 @@ export function CustomerEditor({
   const [email, setEmail] = useState(customer?.email ?? "");
   const [birthDate, setBirthDate] = useState(customer?.birthDate ?? "");
   const [notes, setNotes] = useState(customer?.notes ?? "");
+  const [tags, setTags] = useState(customer?.tags.join(", ") ?? "");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,6 +47,12 @@ export function CustomerEditor({
             email: email.trim() || null,
             birthDate: birthDate || null,
             notes: notes.trim() || null,
+            tags: tags.trim()
+              ? tags
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean)
+              : [],
           }),
         },
       );
@@ -128,6 +135,18 @@ export function CustomerEditor({
             onChange={(event) => setNotes(event.target.value)}
             className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 outline-none focus:border-lime-400"
           />
+        </label>
+        <label className="block text-sm font-medium sm:col-span-2">
+          Etiquetas
+          <input
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+            placeholder="mensalista, iniciante, torneio"
+            className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 outline-none focus:border-lime-400"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            Separe por vírgulas. Até 10 etiquetas de 2 a 30 caracteres.
+          </span>
         </label>
       </div>
       <p className="text-xs text-slate-500">

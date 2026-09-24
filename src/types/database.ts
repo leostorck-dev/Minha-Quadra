@@ -147,6 +147,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           status: string
+          tags: string[]
           tenant_id: string
           updated_at: string
         }
@@ -160,6 +161,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           status?: string
+          tags?: string[]
           tenant_id: string
           updated_at?: string
         }
@@ -173,6 +175,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           status?: string
+          tags?: string[]
           tenant_id?: string
           updated_at?: string
         }

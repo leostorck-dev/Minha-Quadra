@@ -10,13 +10,21 @@ export type CustomerCreateInput = {
   email: string | null;
   birthDate: string | null;
   notes: string | null;
+  tags: string[];
 };
 
 export type CustomerUpdateInput = Partial<CustomerCreateInput> & {
   status?: CustomerStatus;
 };
 
-const createKeys = new Set(["name", "phone", "email", "birthDate", "notes"]);
+const createKeys = new Set([
+  "name",
+  "phone",
+  "email",
+  "birthDate",
+  "notes",
+  "tags",
+]);
 const updateKeys = new Set([...createKeys, "status"]);
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -101,6 +109,23 @@ function parseNotes(value: unknown): string | null {
   return value.trim() || null;
 }
 
+function parseTags(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 10) {
+    throw new ValidationError("Informe até 10 etiquetas.");
+  }
+  const tags = value.map((item) => {
+    if (typeof item !== "string")
+      throw new ValidationError("Etiqueta inválida.");
+    const tag = item.trim().toLowerCase();
+    if (tag.length < 2 || tag.length > 30)
+      throw new ValidationError("Cada etiqueta deve ter de 2 a 30 caracteres.");
+    return tag;
+  });
+  if (new Set(tags).size !== tags.length)
+    throw new ValidationError("Não repita etiquetas no mesmo cliente.");
+  return tags;
+}
+
 export function parseCustomerCreate(value: unknown): CustomerCreateInput {
   const input = asRecord(value);
   rejectUnknownKeys(input, createKeys);
@@ -117,6 +142,7 @@ export function parseCustomerCreate(value: unknown): CustomerCreateInput {
     email,
     birthDate: parseBirthDate(input.birthDate ?? null),
     notes: parseNotes(input.notes ?? null),
+    tags: parseTags(input.tags ?? []),
   };
 }
 
@@ -135,6 +161,7 @@ export function parseCustomerUpdate(value: unknown): CustomerUpdateInput {
     output.birthDate = parseBirthDate(input.birthDate);
   }
   if ("notes" in input) output.notes = parseNotes(input.notes);
+  if ("tags" in input) output.tags = parseTags(input.tags);
   if ("status" in input) {
     if (input.status !== "active" && input.status !== "inactive") {
       throw new ValidationError("Status inválido.");
@@ -148,6 +175,7 @@ export function parseCustomerSearch(
   search: string | null,
   page: string | null,
   status: string | null,
+  tag: string | null = null,
 ) {
   const query = (search ?? "").trim();
   if (query.length > 80) throw new ValidationError("Busca muito longa.");
@@ -164,5 +192,13 @@ export function parseCustomerSearch(
   ) {
     throw new ValidationError("Filtro de status inválido.");
   }
-  return { query, page: pageNumber, status: status ?? "active" } as const;
+  const normalizedTag = tag?.trim().toLowerCase() || null;
+  if (normalizedTag && (normalizedTag.length < 2 || normalizedTag.length > 30))
+    throw new ValidationError("Filtro de etiqueta inválido.");
+  return {
+    query,
+    page: pageNumber,
+    status: status ?? "active",
+    tag: normalizedTag,
+  } as const;
 }

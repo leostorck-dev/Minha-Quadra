@@ -14,6 +14,8 @@ type ListResponse = {
 export function CustomerList() {
   const [searchDraft, setSearchDraft] = useState("");
   const [query, setQuery] = useState("");
+  const [tagDraft, setTagDraft] = useState("");
+  const [tag, setTag] = useState("");
   const [status, setStatus] = useState("active");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<{
@@ -21,7 +23,7 @@ export function CustomerList() {
     data?: ListResponse;
     error?: string;
   } | null>(null);
-  const requestKey = JSON.stringify([query, status, page]);
+  const requestKey = JSON.stringify([query, status, tag, page]);
   const loading = result?.key !== requestKey;
   const data = loading ? null : (result.data ?? null);
   const error = loading ? "" : (result.error ?? "");
@@ -32,6 +34,7 @@ export function CustomerList() {
       q: query,
       status,
       page: String(page),
+      tag,
     });
     fetch(`/api/customers?${params}`, {
       signal: controller.signal,
@@ -52,12 +55,13 @@ export function CustomerList() {
       });
 
     return () => controller.abort();
-  }, [query, status, page, requestKey]);
+  }, [query, status, tag, page, requestKey]);
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPage(1);
     setQuery(searchDraft.trim());
+    setTag(tagDraft.trim().toLowerCase());
   }
 
   const totalPages = data
@@ -83,7 +87,7 @@ export function CustomerList() {
       </div>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <form onSubmit={search} className="flex min-w-0 flex-1 gap-2">
+        <form onSubmit={search} className="flex min-w-0 flex-1 flex-wrap gap-2">
           <label htmlFor="customer-search" className="sr-only">
             Buscar por nome
           </label>
@@ -95,6 +99,18 @@ export function CustomerList() {
             value={searchDraft}
             onChange={(event) => setSearchDraft(event.target.value)}
             className="min-w-0 flex-1 rounded-lg border border-white/15 bg-slate-900 px-4 py-3 outline-none focus:border-lime-400"
+          />
+          <label htmlFor="customer-tag" className="sr-only">
+            Filtrar por etiqueta
+          </label>
+          <input
+            id="customer-tag"
+            type="search"
+            maxLength={30}
+            placeholder="Etiqueta"
+            value={tagDraft}
+            onChange={(event) => setTagDraft(event.target.value)}
+            className="min-w-32 flex-1 rounded-lg border border-white/15 bg-slate-900 px-4 py-3 outline-none focus:border-lime-400"
           />
           <button
             type="submit"
@@ -143,6 +159,18 @@ export function CustomerList() {
                     <p className="mt-1 text-sm text-slate-400">
                       {customer.phone ?? customer.email}
                     </p>
+                    {customer.tags.length > 0 && (
+                      <p className="mt-2 flex flex-wrap gap-1">
+                        {customer.tags.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full bg-sky-400/10 px-2 py-0.5 text-xs text-sky-200"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${customer.status === "active" ? "bg-lime-400/10 text-lime-300" : "bg-slate-700 text-slate-300"}`}

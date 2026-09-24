@@ -17,6 +17,7 @@ export type Customer = {
   email: string | null;
   birthDate: string | null;
   notes: string | null;
+  tags: string[];
   status: CustomerStatus;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +38,7 @@ function toCustomer(row: CustomerRow): Customer {
     email: row.email,
     birthDate: row.birth_date,
     notes: row.notes,
+    tags: row.tags,
     status: row.status as CustomerStatus,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -51,7 +53,12 @@ function isUuid(value: string) {
 
 export async function listCustomers(
   context: AuthContext,
-  options: { query: string; page: number; status: CustomerStatus | "all" },
+  options: {
+    query: string;
+    page: number;
+    status: CustomerStatus | "all";
+    tag: string | null;
+  },
 ) {
   const supabase = await createClient();
   const pageSize = 20;
@@ -63,6 +70,7 @@ export async function listCustomers(
 
   if (options.status !== "all") query = query.eq("status", options.status);
   if (options.query) query = query.ilike("name", `%${options.query}%`);
+  if (options.tag) query = query.contains("tags", [options.tag]);
 
   const { data, count, error } = await query
     .order("created_at", { ascending: false })
@@ -108,6 +116,7 @@ export async function createCustomer(
       email: input.email,
       birth_date: input.birthDate,
       notes: input.notes,
+      tags: input.tags,
     })
     .select("*")
     .single();
@@ -136,6 +145,7 @@ export async function updateCustomer(
   if ("email" in input) updates.email = input.email;
   if ("birthDate" in input) updates.birth_date = input.birthDate;
   if ("notes" in input) updates.notes = input.notes;
+  if ("tags" in input) updates.tags = input.tags;
   if ("status" in input) updates.status = input.status;
 
   const supabase = await createClient();

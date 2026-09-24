@@ -1,6 +1,6 @@
 # Minha Quadra
 
-Plataforma de gestão de arenas esportivas. A fundação multiempresa, o acesso à conta e os módulos de clientes, quadras, agenda, pagamentos manuais e financeiro básico estão implementados; os demais módulos seguirão as [specs](./specs/).
+Plataforma de gestão de arenas esportivas. O primeiro MVP reúne conta, equipe, clientes, quadras, agenda, pagamentos manuais, financeiro, dashboard e auditoria. O MVP 2 começa com etiquetas para segmentar clientes.
 
 ## Requisitos
 
@@ -25,7 +25,7 @@ Para que confirmação de email e recuperação de senha funcionem em produção
 
 O projeto atual exige confirmação de email. A rota `/auth/confirm` aceita código PKCE ou `token_hash` e redireciona para o cadastro da arena. O serviço de email padrão do Supabase tem limite baixo; para uso em produção, configure SMTP próprio.
 
-Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboarding` → `/dashboard`. `/forgot-password` permite solicitar recuperação de senha. Em `/customers`, proprietário, gerente e recepção podem cadastrar, buscar, editar e inativar clientes da própria arena. Em `/courts`, todos os papéis administrativos podem consultar quadras; proprietário e gerente podem criar, editar horários e preço, colocar em manutenção e desativar ou reativar. Em `/agenda`, a equipe consulta a agenda diária e semanal, com filtros, disponibilidade, reservas manuais, bloqueios, cancelamento, check-in e conclusão. Cada reserva mostra a situação da cobrança; proprietário, gerente e recepção podem registrar pagamento manual em Pix, dinheiro, crédito ou débito e registrar estorno com histórico. Em `/finance`, proprietário e gerente podem acompanhar receitas, despesas, contas a pagar e resultado mensal, além de criar lançamentos manuais. Pagamentos de reservas e estornos entram automaticamente como movimentações separadas no fluxo de caixa. Em `/dashboard`, a equipe vê reservas, ocupação e próximas reservas; proprietário e gerente também veem receita e ticket médio. Em `/audit`, proprietário e gerente consultam o histórico de alterações em clientes, reservas e pagamentos. Reservas recorrentes, online e gateway ficam para etapas futuras.
+Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboarding` → `/dashboard`. `/forgot-password` permite solicitar recuperação de senha. Em `/customers`, proprietário, gerente e recepção podem cadastrar, buscar, editar e inativar clientes da própria arena, adicionar etiquetas e filtrar por elas. Em `/courts`, todos os papéis administrativos podem consultar quadras; proprietário e gerente podem criar, editar horários e preço, colocar em manutenção e desativar ou reativar. Em `/agenda`, a equipe consulta a agenda diária e semanal, com filtros, disponibilidade, reservas manuais, bloqueios, cancelamento, check-in e conclusão. Cada reserva mostra a situação da cobrança; proprietário, gerente e recepção podem registrar pagamento manual em Pix, dinheiro, crédito ou débito e registrar estorno com histórico. Em `/finance`, proprietário e gerente podem acompanhar receitas, despesas, contas a pagar e resultado mensal, além de criar lançamentos manuais. Pagamentos de reservas e estornos entram automaticamente como movimentações separadas no fluxo de caixa. Em `/dashboard`, a equipe vê reservas, ocupação e próximas reservas; proprietário e gerente também veem receita e ticket médio. Em `/audit`, proprietário e gerente consultam o histórico de alterações em clientes, reservas e pagamentos. Reservas recorrentes, online e gateway ficam para etapas futuras.
 
 ## Comandos
 
@@ -37,7 +37,7 @@ Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboar
 - `npm run format`: formatação do projeto.
 - `npm test`: validação automatizada de clientes, quadras, reservas e lançamentos financeiros.
 
-Os testes de integração em [tests/reservations.database.sql](./tests/reservations.database.sql), [tests/payments.database.sql](./tests/payments.database.sql), [tests/finance.database.sql](./tests/finance.database.sql), [tests/dashboard.database.sql](./tests/dashboard.database.sql) e [tests/audit.database.sql](./tests/audit.database.sql) validam reservas, pagamentos, financeiro, painel e auditoria no PostgreSQL. Execute-os em um projeto de desenvolvimento pelo editor SQL ou pelo conector Supabase; as transações terminam em `ROLLBACK`.
+Os testes de integração em [tests/crm-tags.database.sql](./tests/crm-tags.database.sql), [tests/reservations.database.sql](./tests/reservations.database.sql), [tests/payments.database.sql](./tests/payments.database.sql), [tests/finance.database.sql](./tests/finance.database.sql), [tests/dashboard.database.sql](./tests/dashboard.database.sql) e [tests/audit.database.sql](./tests/audit.database.sql) cobrem o banco. Execute-os em um projeto de desenvolvimento pelo editor SQL ou pelo conector Supabase; as transações terminam em `ROLLBACK`.
 
 ## Estrutura
 

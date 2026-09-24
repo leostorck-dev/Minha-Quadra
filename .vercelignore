@@ -3,3 +3,7 @@
 .next
 node_modules
 supabase/.temp
+materiais-venda/
+apply-auth.ps1
+repair-auth.ps1
+test-script.txt
