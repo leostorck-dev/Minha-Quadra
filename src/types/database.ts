@@ -452,6 +452,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dashboard_overview: { Args: never; Returns: Json }
       finance_month_summary: {
         Args: { p_month: string }
         Returns: {

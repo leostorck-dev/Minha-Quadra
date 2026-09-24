@@ -25,7 +25,7 @@ Para que confirmação de email e recuperação de senha funcionem em produção
 
 O projeto atual exige confirmação de email. A rota `/auth/confirm` aceita código PKCE ou `token_hash` e redireciona para o cadastro da arena. O serviço de email padrão do Supabase tem limite baixo; para uso em produção, configure SMTP próprio.
 
-Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboarding` → `/dashboard`. `/forgot-password` permite solicitar recuperação de senha. Em `/customers`, proprietário, gerente e recepção podem cadastrar, buscar, editar e inativar clientes da própria arena. Em `/courts`, todos os papéis administrativos podem consultar quadras; proprietário e gerente podem criar, editar horários e preço, colocar em manutenção e desativar ou reativar. Em `/agenda`, a equipe consulta a agenda diária e semanal, com filtros, disponibilidade, reservas manuais, bloqueios, cancelamento, check-in e conclusão. Cada reserva mostra a situação da cobrança; proprietário, gerente e recepção podem registrar pagamento manual em Pix, dinheiro, crédito ou débito e registrar estorno com histórico. Em `/finance`, proprietário e gerente podem acompanhar receitas, despesas, contas a pagar e resultado mensal, além de criar lançamentos manuais. Pagamentos de reservas e estornos entram automaticamente como movimentações separadas no fluxo de caixa. Reservas recorrentes, online e gateway ficam para etapas futuras.
+Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboarding` → `/dashboard`. `/forgot-password` permite solicitar recuperação de senha. Em `/customers`, proprietário, gerente e recepção podem cadastrar, buscar, editar e inativar clientes da própria arena. Em `/courts`, todos os papéis administrativos podem consultar quadras; proprietário e gerente podem criar, editar horários e preço, colocar em manutenção e desativar ou reativar. Em `/agenda`, a equipe consulta a agenda diária e semanal, com filtros, disponibilidade, reservas manuais, bloqueios, cancelamento, check-in e conclusão. Cada reserva mostra a situação da cobrança; proprietário, gerente e recepção podem registrar pagamento manual em Pix, dinheiro, crédito ou débito e registrar estorno com histórico. Em `/finance`, proprietário e gerente podem acompanhar receitas, despesas, contas a pagar e resultado mensal, além de criar lançamentos manuais. Pagamentos de reservas e estornos entram automaticamente como movimentações separadas no fluxo de caixa. Em `/dashboard`, a equipe vê reservas, ocupação e próximas reservas; proprietário e gerente também veem receita e ticket médio. Reservas recorrentes, online e gateway ficam para etapas futuras.
 
 ## Comandos
 
@@ -37,7 +37,7 @@ Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboar
 - `npm run format`: formatação do projeto.
 - `npm test`: validação automatizada de clientes, quadras, reservas e lançamentos financeiros.
 
-Os testes de integração em [tests/reservations.database.sql](./tests/reservations.database.sql), [tests/payments.database.sql](./tests/payments.database.sql) e [tests/finance.database.sql](./tests/finance.database.sql) validam reservas, pagamentos e financeiro no PostgreSQL. Execute-os em um projeto de desenvolvimento pelo editor SQL ou pelo conector Supabase; as transações terminam em `ROLLBACK`.
+Os testes de integração em [tests/reservations.database.sql](./tests/reservations.database.sql), [tests/payments.database.sql](./tests/payments.database.sql), [tests/finance.database.sql](./tests/finance.database.sql) e [tests/dashboard.database.sql](./tests/dashboard.database.sql) validam reservas, pagamentos, financeiro e painel no PostgreSQL. Execute-os em um projeto de desenvolvimento pelo editor SQL ou pelo conector Supabase; as transações terminam em `ROLLBACK`.
 
 ## Estrutura
 
@@ -48,4 +48,4 @@ Os testes de integração em [tests/reservations.database.sql](./tests/reservati
 - `specs`: visão, arquitetura, constituição e specs de features.
 - `tests`: testes automatizados.
 
-Leia [constitution.md](./specs/constitution.md) antes de implementar uma feature. O próximo módulo funcional é o painel gerencial; convites de funcionários ainda precisam de spec própria.
+Leia [constitution.md](./specs/constitution.md) antes de implementar uma feature. O próximo módulo previsto é auditoria; convites de funcionários ainda precisam de spec própria.
