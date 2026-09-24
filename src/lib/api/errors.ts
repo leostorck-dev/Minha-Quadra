@@ -7,6 +7,10 @@ import {
 } from "@/features/reservations/service";
 import { ValidationError } from "@/lib/api/validation-error";
 import { PaymentConflictError } from "@/features/payments/service";
+import {
+  FinancialConflictError,
+  FinancialNotFoundError,
+} from "@/features/finance/service";
 
 export function privateJson(data: unknown, status = 200) {
   return Response.json(data, {
@@ -16,6 +20,12 @@ export function privateJson(data: unknown, status = 200) {
 }
 
 export function apiError(error: unknown) {
+  if (error instanceof FinancialConflictError) {
+    return privateJson(
+      { error: { code: "FINANCIAL_CONFLICT", message: error.message } },
+      409,
+    );
+  }
   if (error instanceof PaymentConflictError) {
     return privateJson(
       { error: { code: "PAYMENT_CONFLICT", message: error.message } },
@@ -55,7 +65,8 @@ export function apiError(error: unknown) {
   if (
     error instanceof CustomerNotFoundError ||
     error instanceof CourtNotFoundError ||
-    error instanceof ReservationNotFoundError
+    error instanceof ReservationNotFoundError ||
+    error instanceof FinancialNotFoundError
   ) {
     return privateJson(
       { error: { code: "NOT_FOUND", message: error.message } },

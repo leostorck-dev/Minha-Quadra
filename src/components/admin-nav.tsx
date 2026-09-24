@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/auth/context";
 
-const upcoming = ["Financeiro", "Configurações"];
+const upcoming = ["Configurações"];
 
 export function AdminNav({ role }: { role: Role }) {
   const pathname = usePathname();
@@ -13,6 +13,9 @@ export function AdminNav({ role }: { role: Role }) {
     { href: "/agenda", label: "Agenda" },
     ...(role === "COACH" ? [] : [{ href: "/customers", label: "Clientes" }]),
     { href: "/courts", label: "Quadras" },
+    ...(["OWNER", "MANAGER"].includes(role)
+      ? [{ href: "/finance", label: "Financeiro" }]
+      : []),
   ];
 
   return (

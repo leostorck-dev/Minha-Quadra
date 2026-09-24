@@ -40,6 +40,11 @@ begin
   if (select amount from public.payments where id = paid_id) <> 120 then
     raise exception 'Valor do pagamento incorreto';
   end if;
+  if (select count(*) from public.financial_transactions
+      where source_type = 'reservation' and source_id = paid_id
+        and type = 'income' and status = 'paid' and amount = 120) <> 1 then
+    raise exception 'Receita da reserva não foi criada';
+  end if;
 
   begin
     insert into public.payments (tenant_id, reservation_id, method)
@@ -58,6 +63,11 @@ begin
   if (select count(*) from public.payment_events where payment_id = paid_id) <> 2 then
     raise exception 'Histórico de pagamento incompleto';
   end if;
+  if (select count(*) from public.financial_transactions
+      where source_type = 'refund' and source_id = paid_id
+        and type = 'expense' and status = 'paid' and amount = 120) <> 1 then
+    raise exception 'Despesa de estorno não foi criada';
+  end if;
   begin
     update public.payments set status = 'refunded' where id = paid_id;
   exception when check_violation then second_refund_rejected := true;
@@ -67,6 +77,10 @@ begin
   perform set_config('request.jwt.claim.sub', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbba', true);
   if (select count(*) from public.payments where id = paid_id) <> 0 then
     raise exception 'Outra arena leu o pagamento';
+  end if;
+  if (select count(*) from public.financial_transactions
+      where source_id = paid_id) <> 0 then
+    raise exception 'Outra arena leu o financeiro';
   end if;
 end $$;
 
