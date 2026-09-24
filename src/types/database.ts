@@ -39,6 +39,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          actor_id: string
+          actor_name: string
+          created_at: string
+          details: Json
+          entity_id: string
+          entity_type: string
+          event: string
+          id: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id: string
+          actor_name: string
+          created_at?: string
+          details?: Json
+          entity_id: string
+          entity_type: string
+          event: string
+          id?: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string
+          actor_name?: string
+          created_at?: string
+          details?: Json
+          entity_id?: string
+          entity_type?: string
+          event?: string
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courts: {
         Row: {
           closing_time: string

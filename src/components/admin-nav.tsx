@@ -14,7 +14,10 @@ export function AdminNav({ role }: { role: Role }) {
     ...(role === "COACH" ? [] : [{ href: "/customers", label: "Clientes" }]),
     { href: "/courts", label: "Quadras" },
     ...(["OWNER", "MANAGER"].includes(role)
-      ? [{ href: "/finance", label: "Financeiro" }]
+      ? [
+          { href: "/finance", label: "Financeiro" },
+          { href: "/audit", label: "Auditoria" },
+        ]
       : []),
   ];
 
@@ -58,7 +61,7 @@ export function AdminNav({ role }: { role: Role }) {
 
       <nav
         aria-label="Navegação mobile"
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-white/10 bg-slate-900 px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-white/10 bg-slate-900 px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {links.map(({ href, label }) => (
           <Link
@@ -69,7 +72,7 @@ export function AdminNav({ role }: { role: Role }) {
                 ? "page"
                 : undefined
             }
-            className={`flex-1 px-3 py-4 text-center text-sm font-semibold ${
+            className={`shrink-0 px-3 py-4 text-center text-xs font-semibold ${
               pathname === href || pathname.startsWith(`${href}/`)
                 ? "text-lime-400"
                 : "text-slate-400"
