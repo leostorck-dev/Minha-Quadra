@@ -13,14 +13,16 @@ insert into public.profiles (id,tenant_id,name,email,role) values
 select set_config('request.jwt.claim.sub','a1111111-aaaa-4111-8111-111111111113',true);
 select set_config('request.jwt.claims','{"sub":"a1111111-aaaa-4111-8111-111111111113","role":"authenticated"}',true);
 insert into public.courts (id,tenant_id,name,sport,price_per_hour,opening_time,closing_time,created_by)
-values ('a3333333-aaaa-4333-8333-333333333333','a2222222-aaaa-4222-8222-222222222223','Quadra Aula','Futevôlei',100,'08:00','22:00','a1111111-aaaa-4111-8111-111111111113');
+values
+  ('a3333333-aaaa-4333-8333-333333333333','a2222222-aaaa-4222-8222-222222222223','Quadra Aula','Futevôlei',100,'08:00','22:00','a1111111-aaaa-4111-8111-111111111113'),
+  ('b3333333-bbbb-4333-8333-333333333333','a2222222-aaaa-4222-8222-222222222223','Quadra Dois','Futevôlei',100,'08:00','22:00','a1111111-aaaa-4111-8111-111111111113');
 insert into public.customers (id,tenant_id,name,phone,created_by) values
   ('a4444444-aaaa-4444-8444-444444444443','a2222222-aaaa-4222-8222-222222222223','Aluno Um','11999990011','a1111111-aaaa-4111-8111-111111111113'),
   ('a5555555-aaaa-4555-8555-555555555553','a2222222-aaaa-4222-8222-222222222223','Aluno Dois','11999990012','a1111111-aaaa-4111-8111-111111111113');
 set local role authenticated;
 do $$
 declare
-  v_coach public.coaches; v_class public.class_sessions;
+  v_coach public.coaches; v_class public.class_sessions; v_cancel public.class_sessions;
   v_start timestamptz := ((current_date - 1) + time '10:00') at time zone 'America/Sao_Paulo';
   rejected boolean;
 begin
@@ -40,6 +42,26 @@ begin
   exception when exclusion_violation then rejected := true;
   end;
   if not rejected then raise exception 'Sobreposição aceita'; end if;
+  rejected := false;
+  begin
+    perform public.create_class(v_coach.id,'b3333333-bbbb-4333-8333-333333333333','individual',
+      v_start,v_start + interval '1 hour',100,array['a4444444-aaaa-4444-8444-444444444443']::uuid[]);
+  exception when exclusion_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'Professor em duas quadras ao mesmo tempo'; end if;
+  rejected := false;
+  begin
+    update public.reservations set start_at = v_start + interval '30 minutes'
+      where id = v_class.reservation_id;
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'Bloqueio da aula alterado na agenda'; end if;
+  v_cancel := public.create_class(v_coach.id,'b3333333-bbbb-4333-8333-333333333333','individual',
+    v_start + interval '2 hours',v_start + interval '3 hours',100,
+    array['a4444444-aaaa-4444-8444-444444444443']::uuid[]);
+  perform public.cancel_class(v_cancel.id);
+  if (select status from public.reservations where id = v_cancel.reservation_id) <> 'cancelled'
+    then raise exception 'Cancelamento não liberou quadra'; end if;
   perform set_config('request.jwt.claim.sub','c1111111-cccc-4111-8111-111111111113',true);
   perform set_config('request.jwt.claims','{"sub":"c1111111-cccc-4111-8111-111111111113","role":"authenticated"}',true);
   if (select count(*) from public.class_sessions) <> 0 then raise exception 'Outra arena vê aula'; end if;
@@ -49,7 +71,7 @@ begin
   if not rejected then raise exception 'Outra arena cancelou aula'; end if;
   perform set_config('request.jwt.claim.sub','b1111111-bbbb-4111-8111-111111111113',true);
   perform set_config('request.jwt.claims','{"sub":"b1111111-bbbb-4111-8111-111111111113","role":"authenticated"}',true);
-  if (select count(*) from public.class_sessions) <> 1 then raise exception 'Professor não vê sua aula'; end if;
+  if (select count(*) from public.class_sessions) <> 2 then raise exception 'Professor não vê suas aulas'; end if;
   if (select count(*) from public.customers) <> 2 then raise exception 'Professor não vê seus alunos'; end if;
   perform public.finish_class(v_class.id,array['a4444444-aaaa-4444-8444-444444444443']::uuid[]);
   if (select count(*) from public.class_students where class_id = v_class.id and attendance = 'present') <> 1

@@ -15,6 +15,10 @@ import {
   MembershipConflictError,
   MembershipNotFoundError,
 } from "@/features/memberships/service";
+import {
+  ClassConflictError,
+  ClassNotFoundError,
+} from "@/features/classes/service";
 
 export function privateJson(data: unknown, status = 200) {
   return Response.json(data, {
@@ -24,6 +28,12 @@ export function privateJson(data: unknown, status = 200) {
 }
 
 export function apiError(error: unknown) {
+  if (error instanceof ClassConflictError) {
+    return privateJson(
+      { error: { code: "CLASS_CONFLICT", message: error.message } },
+      409,
+    );
+  }
   if (error instanceof MembershipConflictError) {
     return privateJson(
       { error: { code: "MEMBERSHIP_CONFLICT", message: error.message } },
@@ -77,7 +87,8 @@ export function apiError(error: unknown) {
     error instanceof CourtNotFoundError ||
     error instanceof ReservationNotFoundError ||
     error instanceof FinancialNotFoundError ||
-    error instanceof MembershipNotFoundError
+    error instanceof MembershipNotFoundError ||
+    error instanceof ClassNotFoundError
   ) {
     return privateJson(
       { error: { code: "NOT_FOUND", message: error.message } },
