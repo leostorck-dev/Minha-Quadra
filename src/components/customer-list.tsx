@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import type { Customer } from "@/features/customers/service";
+import type { CustomerListItem } from "@/features/customers/service";
 
 type ListResponse = {
-  items: Customer[];
+  items: CustomerListItem[];
   total: number;
   page: number;
   pageSize: number;
@@ -17,13 +17,14 @@ export function CustomerList() {
   const [tagDraft, setTagDraft] = useState("");
   const [tag, setTag] = useState("");
   const [status, setStatus] = useState("active");
+  const [segment, setSegment] = useState("all");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<{
     key: string;
     data?: ListResponse;
     error?: string;
   } | null>(null);
-  const requestKey = JSON.stringify([query, status, tag, page]);
+  const requestKey = JSON.stringify([query, status, tag, segment, page]);
   const loading = result?.key !== requestKey;
   const data = loading ? null : (result.data ?? null);
   const error = loading ? "" : (result.error ?? "");
@@ -35,6 +36,7 @@ export function CustomerList() {
       status,
       page: String(page),
       tag,
+      segment,
     });
     fetch(`/api/customers?${params}`, {
       signal: controller.signal,
@@ -55,7 +57,7 @@ export function CustomerList() {
       });
 
     return () => controller.abort();
-  }, [query, status, tag, page, requestKey]);
+  }, [query, status, tag, segment, page, requestKey]);
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +77,7 @@ export function CustomerList() {
           <p className="text-sm text-lime-400">Operação</p>
           <h1 className="mt-2 text-3xl font-bold">Clientes</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Cadastre e encontre pessoas da sua arena.
+            Cadastre, segmente e encontre pessoas da sua arena.
           </p>
         </div>
         <Link
@@ -86,7 +88,7 @@ export function CustomerList() {
         </Link>
       </div>
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <form onSubmit={search} className="flex min-w-0 flex-1 flex-wrap gap-2">
           <label htmlFor="customer-search" className="sr-only">
             Buscar por nome
@@ -135,8 +137,33 @@ export function CustomerList() {
           <option value="inactive">Inativos</option>
           <option value="all">Todos</option>
         </select>
+        <label className="sr-only" htmlFor="customer-segment">
+          Segmentar clientes
+        </label>
+        <select
+          id="customer-segment"
+          value={segment}
+          onChange={(event) => {
+            setSegment(event.target.value);
+            setPage(1);
+          }}
+          className="rounded-lg border border-white/15 bg-slate-900 px-4 py-3 text-sm outline-none focus:border-lime-400"
+        >
+          <option value="all">Todos os segmentos</option>
+          <option value="lapsed_15">Sem reserva há 15 dias</option>
+          <option value="lapsed_30">Sem reserva há 30 dias</option>
+          <option value="frequent_10">Mais de 10 reservas</option>
+          <option value="birthday_month">Aniversariantes do mês</option>
+          <option value="new_30">Novos nos últimos 30 dias</option>
+        </select>
       </div>
 
+      {segment !== "all" && (
+        <p className="mt-3 text-xs text-slate-500">
+          Segmentos usam reservas confirmadas, com check-in ou concluídas.
+          Cancelamentos e ausências não entram na contagem.
+        </p>
+      )}
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
         {loading ? (
           <p role="status" className="p-8 text-sm text-slate-400">
@@ -158,6 +185,13 @@ export function CustomerList() {
                     <p className="font-semibold">{customer.name}</p>
                     <p className="mt-1 text-sm text-slate-400">
                       {customer.phone ?? customer.email}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {customer.reservationCount} reserva
+                      {customer.reservationCount === 1 ? "" : "s"}
+                      {customer.lastReservationAt
+                        ? ` · Última reserva ${new Date(customer.lastReservationAt).toLocaleDateString("pt-BR")}`
+                        : " · Sem reserva passada"}
                     </p>
                     {customer.tags.length > 0 && (
                       <p className="mt-2 flex flex-wrap gap-1">

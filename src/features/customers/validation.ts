@@ -3,6 +3,15 @@ import { ValidationError } from "../../lib/api/validation-error.ts";
 export { ValidationError };
 
 export type CustomerStatus = "active" | "inactive";
+export const CUSTOMER_SEGMENTS = [
+  "all",
+  "lapsed_15",
+  "lapsed_30",
+  "frequent_10",
+  "birthday_month",
+  "new_30",
+] as const;
+export type CustomerSegment = (typeof CUSTOMER_SEGMENTS)[number];
 
 export type CustomerCreateInput = {
   name: string;
@@ -176,6 +185,7 @@ export function parseCustomerSearch(
   page: string | null,
   status: string | null,
   tag: string | null = null,
+  segment: string | null = null,
 ) {
   const query = (search ?? "").trim();
   if (query.length > 80) throw new ValidationError("Busca muito longa.");
@@ -195,10 +205,13 @@ export function parseCustomerSearch(
   const normalizedTag = tag?.trim().toLowerCase() || null;
   if (normalizedTag && (normalizedTag.length < 2 || normalizedTag.length > 30))
     throw new ValidationError("Filtro de etiqueta inválido.");
+  if (segment !== null && !CUSTOMER_SEGMENTS.some((value) => value === segment))
+    throw new ValidationError("Segmento inválido.");
   return {
     query,
     page: pageNumber,
     status: status ?? "active",
     tag: normalizedTag,
+    segment: (segment ?? "all") as CustomerSegment,
   } as const;
 }

@@ -449,6 +449,13 @@ export type Database = {
             foreignKeyName: "reservations_customer_tenant_fkey"
             columns: ["tenant_id", "customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_crm"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "reservations_customer_tenant_fkey"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["tenant_id", "id"]
           },
@@ -546,7 +553,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customer_crm: {
+        Row: {
+          birth_date: string | null
+          birth_month: number | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          has_upcoming: boolean | null
+          id: string | null
+          last_reservation_at: string | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          reservation_count: number | null
+          status: string | null
+          tags: string[] | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       dashboard_overview: { Args: never; Returns: Json }

@@ -56,16 +56,27 @@ test("rejeita data impossível e email inválido", () => {
 
 test("valida paginação e filtro de status", () => {
   assert.deepEqual(
-    parseCustomerSearch(" Ana ", "2", "inactive", " Mensalista "),
+    parseCustomerSearch(
+      " Ana ",
+      "2",
+      "inactive",
+      " Mensalista ",
+      "frequent_10",
+    ),
     {
       query: "Ana",
       page: 2,
       status: "inactive",
       tag: "mensalista",
+      segment: "frequent_10",
     },
   );
   assert.throws(() => parseCustomerSearch("", "0", null), ValidationError);
   assert.throws(() => parseCustomerSearch("", "1", "deleted"), ValidationError);
+  assert.throws(
+    () => parseCustomerSearch("", "1", "active", null, "unknown"),
+    ValidationError,
+  );
 });
 
 test("normaliza etiquetas e rejeita duplicatas", () => {

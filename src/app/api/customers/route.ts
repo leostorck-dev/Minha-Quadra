@@ -16,6 +16,7 @@ export async function GET(request: Request) {
       params.get("page"),
       params.get("status"),
       params.get("tag"),
+      params.get("segment"),
     );
     return privateJson(await listCustomers(context, options));
   } catch (error) {
