@@ -83,6 +83,193 @@ export type Database = {
           },
         ]
       }
+      class_sessions: {
+        Row: {
+          coach_id: string
+          commission_type: string
+          commission_value: number
+          completed_at: string | null
+          court_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          price: number
+          reservation_id: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          coach_id: string
+          commission_type: string
+          commission_value: number
+          completed_at?: string | null
+          court_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          price: number
+          reservation_id: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          coach_id?: string
+          commission_type?: string
+          commission_value?: number
+          completed_at?: string | null
+          court_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          price?: number
+          reservation_id?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_sessions_coach_fk"
+            columns: ["tenant_id", "coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_sessions_court_fk"
+            columns: ["tenant_id", "court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_sessions_reservation_fk"
+            columns: ["tenant_id", "reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_students: {
+        Row: {
+          attendance: string
+          class_id: string
+          customer_id: string
+          tenant_id: string
+        }
+        Insert: {
+          attendance?: string
+          class_id: string
+          customer_id: string
+          tenant_id: string
+        }
+        Update: {
+          attendance?: string
+          class_id?: string
+          customer_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_students_class_fk"
+            columns: ["tenant_id", "class_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_students_customer_fk"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_crm"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_students_customer_fk"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_students_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaches: {
+        Row: {
+          commission_type: string
+          commission_value: number
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          profile_id: string | null
+          specialties: string[]
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          commission_type: string
+          commission_value: number
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          profile_id?: string | null
+          specialties?: string[]
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          profile_id?: string | null
+          specialties?: string[]
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaches_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courts: {
         Row: {
           closing_time: string
@@ -750,6 +937,30 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_class: {
+        Args: { p_id: string }
+        Returns: {
+          coach_id: string
+          commission_type: string
+          commission_value: number
+          completed_at: string | null
+          court_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          price: number
+          reservation_id: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "class_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_customer_membership: {
         Args: { p_id: string }
         Returns: {
@@ -770,6 +981,69 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "customer_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_class: {
+        Args: {
+          p_coach_id: string
+          p_court_id: string
+          p_customer_ids: string[]
+          p_end_at: string
+          p_kind: string
+          p_price: number
+          p_start_at: string
+        }
+        Returns: {
+          coach_id: string
+          commission_type: string
+          commission_value: number
+          completed_at: string | null
+          court_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          price: number
+          reservation_id: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "class_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_coach: {
+        Args: {
+          p_commission_type: string
+          p_commission_value: number
+          p_email: string
+          p_name: string
+          p_phone: string
+          p_profile_id: string
+          p_specialties: string[]
+        }
+        Returns: {
+          commission_type: string
+          commission_value: number
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          profile_id: string | null
+          specialties: string[]
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "coaches"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -831,6 +1105,30 @@ export type Database = {
           result: number
         }[]
       }
+      finish_class: {
+        Args: { p_id: string; p_present_customer_ids: string[] }
+        Returns: {
+          coach_id: string
+          commission_type: string
+          commission_value: number
+          completed_at: string | null
+          court_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          price: number
+          reservation_id: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "class_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       join_arena: {
         Args: { member_name: string; p_token: string }
         Returns: string
@@ -854,6 +1152,29 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "membership_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_coach_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: {
+          commission_type: string
+          commission_value: number
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          profile_id: string | null
+          specialties: string[]
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "coaches"
           isOneToOne: true
           isSetofReturn: false
         }
