@@ -14,6 +14,7 @@ export function AdminNav({ role }: { role: Role }) {
     ...(["OWNER", "MANAGER"].includes(role)
       ? [
           { href: "/finance", label: "Financeiro" },
+          { href: "/memberships", label: "Planos" },
           { href: "/audit", label: "Auditoria" },
         ]
       : []),

@@ -11,6 +11,10 @@ import {
   FinancialConflictError,
   FinancialNotFoundError,
 } from "@/features/finance/service";
+import {
+  MembershipConflictError,
+  MembershipNotFoundError,
+} from "@/features/memberships/service";
 
 export function privateJson(data: unknown, status = 200) {
   return Response.json(data, {
@@ -20,6 +24,12 @@ export function privateJson(data: unknown, status = 200) {
 }
 
 export function apiError(error: unknown) {
+  if (error instanceof MembershipConflictError) {
+    return privateJson(
+      { error: { code: "MEMBERSHIP_CONFLICT", message: error.message } },
+      409,
+    );
+  }
   if (error instanceof FinancialConflictError) {
     return privateJson(
       { error: { code: "FINANCIAL_CONFLICT", message: error.message } },
@@ -66,7 +76,8 @@ export function apiError(error: unknown) {
     error instanceof CustomerNotFoundError ||
     error instanceof CourtNotFoundError ||
     error instanceof ReservationNotFoundError ||
-    error instanceof FinancialNotFoundError
+    error instanceof FinancialNotFoundError ||
+    error instanceof MembershipNotFoundError
   ) {
     return privateJson(
       { error: { code: "NOT_FOUND", message: error.message } },

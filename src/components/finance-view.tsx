@@ -460,7 +460,10 @@ export function FinanceView({
                         <p className="mt-1 text-xs text-slate-400">
                           {item.category} ·{" "}
                           {item.activityOn.split("-").reverse().join("/")}
-                          {item.sourceType !== "manual" && " · Reserva"}
+                          {item.sourceType === "membership" && " · Mensalidade"}
+                          {(item.sourceType === "reservation" ||
+                            item.sourceType === "refund") &&
+                            " · Reserva"}
                         </p>
                         {overdue && (
                           <p className="mt-1 text-xs text-rose-300">

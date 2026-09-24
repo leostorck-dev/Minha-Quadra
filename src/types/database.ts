@@ -136,6 +136,83 @@ export type Database = {
           },
         ]
       }
+      customer_memberships: {
+        Row: {
+          billing_day: number
+          cancelled_at: string | null
+          classes_per_month: number | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+          monthly_price: number
+          next_due_on: string
+          plan_id: string
+          start_on: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          billing_day: number
+          cancelled_at?: string | null
+          classes_per_month?: number | null
+          created_at?: string
+          created_by: string
+          customer_id: string
+          id?: string
+          monthly_price: number
+          next_due_on: string
+          plan_id: string
+          start_on: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          billing_day?: number
+          cancelled_at?: string | null
+          classes_per_month?: number | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          id?: string
+          monthly_price?: number
+          next_due_on?: string
+          plan_id?: string
+          start_on?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_memberships_customer_fk"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_crm"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "customer_memberships_customer_fk"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "customer_memberships_plan_fk"
+            columns: ["tenant_id", "plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "customer_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           birth_date: string | null
@@ -247,6 +324,95 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "financial_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_payments: {
+        Row: {
+          amount: number
+          id: string
+          membership_id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          period_due_on: string
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          membership_id: string
+          method: string
+          paid_at?: string
+          paid_by: string
+          period_due_on: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          membership_id?: string
+          method?: string
+          paid_at?: string
+          paid_by?: string
+          period_due_on?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_payments_membership_fk"
+            columns: ["tenant_id", "membership_id"]
+            isOneToOne: false
+            referencedRelation: "customer_memberships"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "membership_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_plans: {
+        Row: {
+          active: boolean
+          classes_per_month: number | null
+          created_at: string
+          created_by: string
+          id: string
+          monthly_price: number
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          classes_per_month?: number | null
+          created_at?: string
+          created_by: string
+          id?: string
+          monthly_price: number
+          name: string
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          classes_per_month?: number | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          monthly_price?: number
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_plans_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -584,7 +750,78 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_customer_membership: {
+        Args: { p_id: string }
+        Returns: {
+          billing_day: number
+          cancelled_at: string | null
+          classes_per_month: number | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+          monthly_price: number
+          next_due_on: string
+          plan_id: string
+          start_on: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_membership_plan: {
+        Args: {
+          p_classes_per_month: number
+          p_monthly_price: number
+          p_name: string
+        }
+        Returns: {
+          active: boolean
+          classes_per_month: number | null
+          created_at: string
+          created_by: string
+          id: string
+          monthly_price: number
+          name: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "membership_plans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       dashboard_overview: { Args: never; Returns: Json }
+      enroll_customer_membership: {
+        Args: { p_customer_id: string; p_plan_id: string; p_start_on: string }
+        Returns: {
+          billing_day: number
+          cancelled_at: string | null
+          classes_per_month: number | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+          monthly_price: number
+          next_due_on: string
+          plan_id: string
+          start_on: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       finance_month_summary: {
         Args: { p_month: string }
         Returns: {
@@ -601,6 +838,44 @@ export type Database = {
       onboard_arena: {
         Args: { arena_name: string; arena_slug: string; owner_name: string }
         Returns: string
+      }
+      pay_membership_due: {
+        Args: { p_membership_id: string; p_method: string }
+        Returns: {
+          amount: number
+          id: string
+          membership_id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          period_due_on: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "membership_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_membership_plan_active: {
+        Args: { p_active: boolean; p_id: string }
+        Returns: {
+          active: boolean
+          classes_per_month: number | null
+          created_at: string
+          created_by: string
+          id: string
+          monthly_price: number
+          name: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "membership_plans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

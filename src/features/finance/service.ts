@@ -22,7 +22,7 @@ export type FinancialTransaction = {
   dueDate: string | null;
   paidAt: string | null;
   activityOn: string;
-  sourceType: "manual" | "reservation" | "refund";
+  sourceType: "manual" | "reservation" | "refund" | "membership";
   createdAt: string;
 };
 
