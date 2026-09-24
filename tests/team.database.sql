@@ -46,6 +46,7 @@ begin
   perform set_config('request.jwt.claim.sub', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc3', true);
   perform set_config('request.jwt.claims', '{"sub":"cccccccc-cccc-4ccc-8ccc-ccccccccccc3","email":"member-team-a@example.invalid","role":"authenticated"}', true);
   if (select count(*) from public.profiles) <> 1 then raise exception 'Gerente vê equipe'; end if;
+  if (select count(*) from public.tenants) <> 1 then raise exception 'Gerente não vê a arena'; end if;
   rejected := false;
   begin
     insert into public.staff_invites (tenant_id, email, role)
