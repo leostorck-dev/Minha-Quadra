@@ -7,6 +7,7 @@ import {
 } from "@/features/reservations/service";
 import { ValidationError } from "@/lib/api/validation-error";
 import { PaymentConflictError } from "@/features/payments/service";
+import { ClassPaymentConflictError } from "@/features/class-payments/service";
 import {
   FinancialConflictError,
   FinancialNotFoundError,
@@ -28,6 +29,12 @@ export function privateJson(data: unknown, status = 200) {
 }
 
 export function apiError(error: unknown) {
+  if (error instanceof ClassPaymentConflictError) {
+    return privateJson(
+      { error: { code: "CLASS_PAYMENT_CONFLICT", message: error.message } },
+      409,
+    );
+  }
   if (error instanceof ClassConflictError) {
     return privateJson(
       { error: { code: "CLASS_CONFLICT", message: error.message } },

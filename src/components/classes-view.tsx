@@ -9,6 +9,7 @@ import type {
   Coach,
 } from "@/features/classes/service";
 import type { ClassKind, CommissionType } from "@/features/classes/validation";
+import { ClassPaymentPanel } from "@/components/class-payment-panel";
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -62,6 +63,8 @@ function ClassCard({
   const coach = data.coaches.find((row) => row.id === item.coach_id);
   const court = data.courts.find((row) => row.id === item.court_id);
   const students = data.students.filter((row) => row.class_id === item.id);
+  const payment = data.payments.find((row) => row.class_id === item.id);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [present, setPresent] = useState<string[]>(
     students.map((row) => row.customer_id),
   );
@@ -94,6 +97,20 @@ function ClassCard({
           <p className="text-sm text-slate-400">
             Comissão estimada: {money.format(commission)}
           </p>
+          {role !== "COACH" && (
+            <p className="mt-1 text-sm text-slate-300">
+              Cobrança avulsa:{" "}
+              {payment
+                ? payment.status === "paid"
+                  ? "Paga"
+                  : "Estornada"
+                : item.status === "cancelled"
+                  ? "Cancelada"
+                  : item.price === 0
+                    ? "Sem cobrança"
+                    : "Pendente"}
+            </p>
+          )}
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold ${item.status === "completed" ? "bg-lime-400/15 text-lime-300" : item.status === "cancelled" ? "bg-slate-700 text-slate-300" : "bg-amber-400/15 text-amber-300"}`}
@@ -165,7 +182,7 @@ function ClassCard({
           )}
           {role !== "COACH" && (
             <button
-              disabled={busy}
+              disabled={busy || payment?.status === "paid"}
               onClick={() => {
                 if (
                   window.confirm(
@@ -185,7 +202,32 @@ function ClassCard({
               Cancelar aula
             </button>
           )}
+          {payment?.status === "paid" && role !== "COACH" && (
+            <p className="self-center text-xs text-amber-300">
+              Estorne o pagamento antes de cancelar.
+            </p>
+          )}
         </div>
+      )}
+      {role !== "COACH" &&
+        item.price > 0 &&
+        (item.status !== "cancelled" || payment) && (
+          <button
+            type="button"
+            onClick={() => setPaymentOpen(true)}
+            className="mt-4 rounded-lg border border-white/20 px-3 py-2 text-sm"
+          >
+            {payment ? "Ver pagamento" : "Registrar cobrança avulsa"}
+          </button>
+        )}
+      {paymentOpen && (
+        <ClassPaymentPanel
+          classSession={item}
+          onClose={() => setPaymentOpen(false)}
+          onChanged={() =>
+            onAction(async () => undefined, "Pagamento da aula atualizado.")
+          }
+        />
       )}
     </li>
   );

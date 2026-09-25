@@ -29,6 +29,8 @@ Fluxo disponível: `/signup` → confirmação de email → `/login` ou `/onboar
 
 Em `/customers`, os segmentos automáticos mostram clientes sem reserva recente, com mais de 10 reservas, aniversariantes do mês e clientes novos. Os filtros combinam com nome, status e etiqueta.
 
+Em `/classes`, a equipe agenda aulas, registra presença e acompanha professores. Proprietário, gerente e recepção podem registrar uma cobrança avulsa pelo valor total da aula e estorná-la; ambos os eventos aparecem no financeiro. Aulas incluídas em mensalidades são controladas pelo consumo exibido em `/memberships`, e a cobrança avulsa é uma decisão manual da arena.
+
 ## Comandos
 
 - `npm run dev`: servidor de desenvolvimento.

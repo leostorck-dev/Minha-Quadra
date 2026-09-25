@@ -83,6 +83,60 @@ export type Database = {
           },
         ]
       }
+      class_payments: {
+        Row: {
+          amount: number
+          class_id: string
+          id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          refunded_at: string | null
+          refunded_by: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          class_id: string
+          id?: string
+          method: string
+          paid_at?: string
+          paid_by: string
+          refunded_at?: string | null
+          refunded_by?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          class_id?: string
+          id?: string
+          method?: string
+          paid_at?: string
+          paid_by?: string
+          refunded_at?: string | null
+          refunded_by?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_payments_class_fk"
+            columns: ["tenant_id", "class_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "class_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_sessions: {
         Row: {
           coach_id: string
@@ -1164,6 +1218,27 @@ export type Database = {
         Args: { arena_name: string; arena_slug: string; owner_name: string }
         Returns: string
       }
+      pay_class: {
+        Args: { p_class_id: string; p_method: string }
+        Returns: {
+          amount: number
+          class_id: string
+          id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          refunded_at: string | null
+          refunded_by: string | null
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "class_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       pay_membership_due: {
         Args: { p_membership_id: string; p_method: string }
         Returns: {
@@ -1179,6 +1254,27 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "membership_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      refund_class_payment: {
+        Args: { p_class_id: string }
+        Returns: {
+          amount: number
+          class_id: string
+          id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          refunded_at: string | null
+          refunded_by: string | null
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "class_payments"
           isOneToOne: true
           isSetofReturn: false
         }

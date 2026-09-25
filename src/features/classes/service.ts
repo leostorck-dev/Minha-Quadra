@@ -2,6 +2,7 @@ import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import type { ClassKind, CommissionType } from "./validation";
+import type { ClassPayment } from "@/features/class-payments/service";
 
 export type Coach = Database["public"]["Tables"]["coaches"]["Row"];
 export type ClassSession =
@@ -12,6 +13,7 @@ export type ClassOverview = {
   coaches: Coach[];
   classes: ClassSession[];
   students: ClassStudent[];
+  payments: ClassPayment[];
   reservations: {
     id: string;
     start_at: string;
@@ -94,18 +96,29 @@ export async function overview(context: AuthContext): Promise<ClassOverview> {
   const reservationIds = (classes.data ?? []).map(
     (item) => item.reservation_id,
   );
-  const reservations = reservationIds.length
-    ? await supabase
-        .from("reservations")
-        .select("id, start_at, end_at, status")
-        .in("id", reservationIds)
-    : { data: [], error: null };
-  if (reservations.error)
+  const classIds = (classes.data ?? []).map((item) => item.id);
+  const [reservations, payments] = await Promise.all([
+    reservationIds.length
+      ? supabase
+          .from("reservations")
+          .select("id, start_at, end_at, status")
+          .in("id", reservationIds)
+      : Promise.resolve({ data: [], error: null }),
+    context.role !== "COACH" && classIds.length
+      ? supabase
+          .from("class_payments")
+          .select("*")
+          .eq("tenant_id", context.tenantId)
+          .in("class_id", classIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (reservations.error || payments.error)
     throw new Error("Não foi possível carregar os horários das aulas.");
   return {
     coaches: coaches.data ?? [],
     classes: classes.data ?? [],
     students: students.data ?? [],
+    payments: payments.data ?? [],
     customers: customers.data ?? [],
     courts: courts.data ?? [],
     profiles: profiles.data ?? [],
