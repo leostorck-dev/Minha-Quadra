@@ -10,6 +10,8 @@ import type {
 } from "@/features/classes/service";
 import type { ClassKind, CommissionType } from "@/features/classes/validation";
 import { ClassPaymentPanel } from "@/components/class-payment-panel";
+import { CoachCommissionPanel } from "@/components/coach-commission-panel";
+import { commissionAmount } from "@/features/coach-commissions/amount";
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -64,7 +66,9 @@ function ClassCard({
   const court = data.courts.find((row) => row.id === item.court_id);
   const students = data.students.filter((row) => row.class_id === item.id);
   const payment = data.payments.find((row) => row.class_id === item.id);
+  const payout = data.payouts.find((row) => row.class_id === item.id);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [commissionOpen, setCommissionOpen] = useState(false);
   const [present, setPresent] = useState<string[]>(
     students.map((row) => row.customer_id),
   );
@@ -79,10 +83,11 @@ function ClassCard({
     item.status === "scheduled" &&
     !!reservation &&
     Date.parse(reservation.start_at) <= nowEpoch;
-  const commission =
-    item.commission_type === "percentage"
-      ? (item.price * item.commission_value) / 100
-      : item.commission_value;
+  const commission = commissionAmount(
+    item.price,
+    item.commission_type,
+    item.commission_value,
+  );
   return (
     <li className="rounded-xl border border-white/10 bg-slate-900 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -95,7 +100,11 @@ function ClassCard({
             {money.format(item.price)}
           </p>
           <p className="text-sm text-slate-400">
-            Comissão estimada: {money.format(commission)}
+            Comissão: {money.format(commission)}
+            {item.status === "completed" &&
+              commission > 0 &&
+              role !== "RECEPTIONIST" &&
+              ` · ${payout ? "Liquidada" : "Pendente"}`}
           </p>
           {role !== "COACH" && (
             <p className="mt-1 text-sm text-slate-300">
@@ -226,6 +235,32 @@ function ClassCard({
           onClose={() => setPaymentOpen(false)}
           onChanged={() =>
             onAction(async () => undefined, "Pagamento da aula atualizado.")
+          }
+        />
+      )}
+      {item.status === "completed" &&
+        commission > 0 &&
+        role !== "RECEPTIONIST" && (
+          <button
+            type="button"
+            onClick={() => setCommissionOpen(true)}
+            className="mt-4 ml-2 rounded-lg border border-white/20 px-3 py-2 text-sm"
+          >
+            {payout
+              ? "Ver comissão paga"
+              : role === "COACH"
+                ? "Ver comissão"
+                : "Liquidar comissão"}
+          </button>
+        )}
+      {commissionOpen && (
+        <CoachCommissionPanel
+          classSession={item}
+          coachName={coach?.name ?? "Professor"}
+          role={role}
+          onClose={() => setCommissionOpen(false)}
+          onChanged={() =>
+            onAction(async () => undefined, "Comissão liquidada.")
           }
         />
       )}
@@ -377,9 +412,19 @@ export function ClassesView({
   const commissions = completed.reduce(
     (sum, item) =>
       sum +
-      (item.commission_type === "percentage"
-        ? (item.price * item.commission_value) / 100
-        : item.commission_value),
+      commissionAmount(item.price, item.commission_type, item.commission_value),
+    0,
+  );
+  const pendingCommissions = completed.reduce(
+    (sum, item) =>
+      sum +
+      (data?.payouts.some((row) => row.class_id === item.id)
+        ? 0
+        : commissionAmount(
+            item.price,
+            item.commission_type,
+            item.commission_value,
+          )),
     0,
   );
   const activeCoaches =
@@ -418,14 +463,17 @@ export function ClassesView({
         <p className="text-slate-400">Carregando…</p>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               [
                 "Aulas agendadas",
                 sorted.filter((item) => item.status === "scheduled").length,
               ],
               ["Valor das aulas concluídas", money.format(revenue)],
-              ["Comissões estimadas", money.format(commissions)],
+              ["Comissões de aulas concluídas", money.format(commissions)],
+              ...(role === "RECEPTIONIST"
+                ? []
+                : [["Comissões pendentes", money.format(pendingCommissions)]]),
             ].map(([label, value]) => (
               <div
                 key={label}

@@ -264,6 +264,61 @@ export type Database = {
           },
         ]
       }
+      coach_commission_payouts: {
+        Row: {
+          amount: number
+          class_id: string
+          coach_id: string
+          id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          class_id: string
+          coach_id: string
+          id?: string
+          method: string
+          paid_at?: string
+          paid_by: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          class_id?: string
+          coach_id?: string
+          id?: string
+          method?: string
+          paid_at?: string
+          paid_by?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_commission_payouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_payouts_class_fk"
+            columns: ["tenant_id", "class_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "coach_payouts_coach_fk"
+            columns: ["tenant_id", "coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       coaches: {
         Row: {
           commission_type: string
@@ -1235,6 +1290,25 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "class_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pay_coach_commission: {
+        Args: { p_class_id: string; p_method: string }
+        Returns: {
+          amount: number
+          class_id: string
+          coach_id: string
+          id: string
+          method: string
+          paid_at: string
+          paid_by: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "coach_commission_payouts"
           isOneToOne: true
           isSetofReturn: false
         }

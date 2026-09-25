@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import type { ClassKind, CommissionType } from "./validation";
 import type { ClassPayment } from "@/features/class-payments/service";
+import type { CoachCommissionPayout } from "@/features/coach-commissions/service";
 
 export type Coach = Database["public"]["Tables"]["coaches"]["Row"];
 export type ClassSession =
@@ -14,6 +15,7 @@ export type ClassOverview = {
   classes: ClassSession[];
   students: ClassStudent[];
   payments: ClassPayment[];
+  payouts: CoachCommissionPayout[];
   reservations: {
     id: string;
     start_at: string;
@@ -97,7 +99,7 @@ export async function overview(context: AuthContext): Promise<ClassOverview> {
     (item) => item.reservation_id,
   );
   const classIds = (classes.data ?? []).map((item) => item.id);
-  const [reservations, payments] = await Promise.all([
+  const [reservations, payments, payouts] = await Promise.all([
     reservationIds.length
       ? supabase
           .from("reservations")
@@ -111,14 +113,22 @@ export async function overview(context: AuthContext): Promise<ClassOverview> {
           .eq("tenant_id", context.tenantId)
           .in("class_id", classIds)
       : Promise.resolve({ data: [], error: null }),
+    context.role !== "RECEPTIONIST" && classIds.length
+      ? supabase
+          .from("coach_commission_payouts")
+          .select("*")
+          .eq("tenant_id", context.tenantId)
+          .in("class_id", classIds)
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  if (reservations.error || payments.error)
+  if (reservations.error || payments.error || payouts.error)
     throw new Error("Não foi possível carregar os horários das aulas.");
   return {
     coaches: coaches.data ?? [],
     classes: classes.data ?? [],
     students: students.data ?? [],
     payments: payments.data ?? [],
+    payouts: payouts.data ?? [],
     customers: customers.data ?? [],
     courts: courts.data ?? [],
     profiles: profiles.data ?? [],

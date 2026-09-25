@@ -31,6 +31,8 @@ Em `/customers`, os segmentos automáticos mostram clientes sem reserva recente,
 
 Em `/classes`, a equipe agenda aulas, registra presença e acompanha professores. Proprietário, gerente e recepção podem registrar uma cobrança avulsa pelo valor total da aula e estorná-la; ambos os eventos aparecem no financeiro. Aulas incluídas em mensalidades são controladas pelo consumo exibido em `/memberships`, e a cobrança avulsa é uma decisão manual da arena.
 
+Na mesma página, proprietário e gerente podem registrar a comissão paga de cada aula concluída. A liquidação usa a regra congelada quando a aula foi agendada e lança uma despesa no financeiro. O professor pode consultar as próprias comissões.
+
 ## Comandos
 
 - `npm run dev`: servidor de desenvolvimento.

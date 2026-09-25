@@ -8,6 +8,7 @@ import {
 import { ValidationError } from "@/lib/api/validation-error";
 import { PaymentConflictError } from "@/features/payments/service";
 import { ClassPaymentConflictError } from "@/features/class-payments/service";
+import { CoachCommissionConflictError } from "@/features/coach-commissions/service";
 import {
   FinancialConflictError,
   FinancialNotFoundError,
@@ -29,6 +30,12 @@ export function privateJson(data: unknown, status = 200) {
 }
 
 export function apiError(error: unknown) {
+  if (error instanceof CoachCommissionConflictError) {
+    return privateJson(
+      { error: { code: "COACH_COMMISSION_CONFLICT", message: error.message } },
+      409,
+    );
+  }
   if (error instanceof ClassPaymentConflictError) {
     return privateJson(
       { error: { code: "CLASS_PAYMENT_CONFLICT", message: error.message } },
