@@ -558,6 +558,13 @@ export type Database = {
             referencedColumns: ["tenant_id", "id"]
           },
           {
+            foreignKeyName: "membership_payments_membership_fk"
+            columns: ["tenant_id", "membership_id"]
+            isOneToOne: false
+            referencedRelation: "membership_class_usage"
+            referencedColumns: ["tenant_id", "membership_id"]
+          },
+          {
             foreignKeyName: "membership_payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -928,6 +935,26 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_class_usage: {
+        Row: {
+          attended_classes: number | null
+          classes_per_month: number | null
+          cycle_end: string | null
+          cycle_start: string | null
+          membership_id: string | null
+          remaining_classes: number | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_memberships_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

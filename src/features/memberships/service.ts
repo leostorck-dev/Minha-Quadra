@@ -8,11 +8,20 @@ export type Membership =
   Database["public"]["Tables"]["customer_memberships"]["Row"];
 export type MembershipPayment =
   Database["public"]["Tables"]["membership_payments"]["Row"];
+export type MembershipUsage = {
+  membershipId: string;
+  cycleStart: string;
+  cycleEnd: string;
+  attendedClasses: number;
+  classesPerMonth: number | null;
+  remainingClasses: number | null;
+};
 export type MembershipOverview = {
   plans: Plan[];
   memberships: Membership[];
   payments: MembershipPayment[];
   customers: { id: string; name: string }[];
+  usage: MembershipUsage[];
 };
 
 export class MembershipConflictError extends Error {}
@@ -42,7 +51,7 @@ export async function overview(
   context: AuthContext,
 ): Promise<MembershipOverview> {
   const supabase = await createClient();
-  const [plans, memberships, payments, customers] = await Promise.all([
+  const [plans, memberships, payments, customers, usage] = await Promise.all([
     supabase
       .from("membership_plans")
       .select("*")
@@ -66,15 +75,46 @@ export async function overview(
       .eq("status", "active")
       .order("name")
       .limit(500),
+    supabase
+      .from("membership_class_usage")
+      .select(
+        "membership_id, cycle_start, cycle_end, attended_classes, classes_per_month, remaining_classes",
+      )
+      .eq("tenant_id", context.tenantId),
   ]);
-  if (plans.error || memberships.error || payments.error || customers.error) {
+  if (
+    plans.error ||
+    memberships.error ||
+    payments.error ||
+    customers.error ||
+    usage.error
+  ) {
     throw new Error("Não foi possível carregar planos e mensalidades.");
   }
+  const usageItems = (usage.data ?? []).map((row) => {
+    if (
+      !row.membership_id ||
+      !row.cycle_start ||
+      !row.cycle_end ||
+      row.attended_classes === null
+    ) {
+      throw new Error("Não foi possível calcular o consumo de aulas.");
+    }
+    return {
+      membershipId: row.membership_id,
+      cycleStart: row.cycle_start,
+      cycleEnd: row.cycle_end,
+      attendedClasses: row.attended_classes,
+      classesPerMonth: row.classes_per_month,
+      remainingClasses: row.remaining_classes,
+    };
+  });
   return {
     plans: plans.data ?? [],
     memberships: memberships.data ?? [],
     payments: payments.data ?? [],
     customers: customers.data ?? [],
+    usage: usageItems,
   };
 }
 

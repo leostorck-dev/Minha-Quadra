@@ -165,6 +165,11 @@ export function MembershipsView({ today }: { today: string }) {
 
   function membershipRow(item: Membership) {
     const isDue = item.next_due_on <= today;
+    const usage = data?.usage.find((row) => row.membershipId === item.id);
+    const overLimit =
+      usage && item.classes_per_month !== null
+        ? Math.max(usage.attendedClasses - item.classes_per_month, 0)
+        : 0;
     return (
       <li key={item.id} className="border-t border-white/10 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -178,10 +183,28 @@ export function MembershipsView({ today }: { today: string }) {
               {date(item.next_due_on)}
             </p>
             <p className="text-sm text-slate-400">
-              {item.classes_per_month === null
-                ? "Aulas ilimitadas"
-                : `${item.classes_per_month} aulas/mês`}
+              {usage
+                ? item.classes_per_month === null
+                  ? `${usage.attendedClasses} aulas usadas neste período · Ilimitado`
+                  : `${usage.attendedClasses} de ${item.classes_per_month} aulas usadas · ${usage.remainingClasses} restantes`
+                : item.classes_per_month === null
+                  ? "Aulas ilimitadas"
+                  : `${item.classes_per_month} aulas/mês`}
             </p>
+            {usage && (
+              <p className="text-xs text-slate-500">
+                Período iniciado em {date(usage.cycleStart)}
+              </p>
+            )}
+            {usage &&
+              item.classes_per_month !== null &&
+              usage.remainingClasses === 0 && (
+                <p className="mt-1 text-sm font-semibold text-amber-300">
+                  {overLimit > 0
+                    ? `${overLimit} aula${overLimit === 1 ? "" : "s"} acima da franquia`
+                    : "Franquia de aulas atingida"}
+                </p>
+              )}
             {isDue && (
               <p className="mt-1 text-sm font-semibold text-amber-300">
                 {item.next_due_on < today ? "Em atraso" : "Vence hoje"}
