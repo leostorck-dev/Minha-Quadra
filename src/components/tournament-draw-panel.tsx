@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { groupStandings } from "@/features/tournaments/standings";
+import { TournamentMatchResult } from "@/components/tournament-match-result";
 import type {
   TournamentCategory,
   TournamentDraw,
@@ -26,6 +28,16 @@ export function TournamentDrawPanel({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const path = `/api/tournaments/${tournamentId}/draw`;
+
+  async function refreshResults() {
+    const response = await fetch(path, { cache: "no-store" });
+    if (!response.ok)
+      throw new Error(
+        "Não foi possível atualizar os confrontos. Recarregue a página.",
+      );
+    setData(await response.json());
+    setNotice("Confrontos e classificação atualizados.");
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -195,6 +207,71 @@ export function TournamentDrawPanel({
                       ))}
                   </ul>
                   <h6 className="mt-4 text-xs font-bold text-slate-400 uppercase">
+                    Classificação{" "}
+                    {data?.matches.some(
+                      (match) =>
+                        match.group_id === group.id && match.score_a === null,
+                    )
+                      ? "parcial"
+                      : "do grupo"}
+                  </h6>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Ordem: vitórias, saldo e pontos marcados. Empates nesses
+                    critérios compartilham posição. Placar simples, sem sets
+                    separados.
+                  </p>
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <caption className="sr-only">
+                        Classificação do grupo {group.number}
+                      </caption>
+                      <thead>
+                        <tr>
+                          {[
+                            "Pos.",
+                            "Dupla",
+                            "Jogos",
+                            "Vitórias",
+                            "Derrotas",
+                            "Pró",
+                            "Contra",
+                            "Saldo",
+                          ].map((text) => (
+                            <th key={text} scope="col" className="p-2">
+                              {text}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupStandings(
+                          data?.entries.filter(
+                            (e) => e.group_id === group.id,
+                          ) ?? [],
+                          data?.matches.filter(
+                            (m) => m.group_id === group.id,
+                          ) ?? [],
+                        ).map((row) => (
+                          <tr
+                            key={row.teamId}
+                            className="border-t border-white/10"
+                          >
+                            <td className="p-2">{row.rank}</td>
+                            <th scope="row" className="p-2 font-normal">
+                              {row.label}
+                            </th>
+                            <td className="p-2">{row.played}</td>
+                            <td className="p-2">{row.wins}</td>
+                            <td className="p-2">{row.losses}</td>
+                            <td className="p-2">{row.scored}</td>
+                            <td className="p-2">{row.conceded}</td>
+                            <td className="p-2">{row.difference}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <h6 className="mt-4 text-xs font-bold text-slate-400 uppercase">
                     Confrontos
                   </h6>
                   <ol className="mt-2 space-y-2 text-sm">
@@ -205,9 +282,14 @@ export function TournamentDrawPanel({
                           key={match.id}
                           className="rounded border border-white/10 p-2"
                         >
-                          {label(match.team_a_id)}{" "}
-                          <span className="text-lime-300">×</span>{" "}
-                          {label(match.team_b_id)}
+                          <TournamentMatchResult
+                            key={`${match.id}:${match.result_version}`}
+                            match={match}
+                            labelA={label(match.team_a_id)}
+                            labelB={label(match.team_b_id)}
+                            canManage={canManage}
+                            onSaved={refreshResults}
+                          />
                         </li>
                       ))}
                   </ol>

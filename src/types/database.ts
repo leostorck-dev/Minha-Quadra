@@ -1158,6 +1158,9 @@ export type Database = {
           group_id: string
           id: string
           number: number
+          result_version: number
+          score_a: number | null
+          score_b: number | null
           team_a_id: string
           team_b_id: string
           tenant_id: string
@@ -1168,6 +1171,9 @@ export type Database = {
           group_id: string
           id?: string
           number: number
+          result_version?: number
+          score_a?: number | null
+          score_b?: number | null
           team_a_id: string
           team_b_id: string
           tenant_id: string
@@ -1178,6 +1184,9 @@ export type Database = {
           group_id?: string
           id?: string
           number?: number
+          result_version?: number
+          score_a?: number | null
+          score_b?: number | null
           team_a_id?: string
           team_b_id?: string
           tenant_id?: string
@@ -1221,6 +1230,59 @@ export type Database = {
               "group_id",
               "team_id",
             ]
+          },
+        ]
+      }
+      tournament_result_history: {
+        Row: {
+          id: string
+          match_id: string
+          previous_score_a: number | null
+          previous_score_b: number | null
+          reason: string
+          recorded_at: string
+          recorded_by: string
+          score_a: number | null
+          score_b: number | null
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          previous_score_a?: number | null
+          previous_score_b?: number | null
+          reason: string
+          recorded_at?: string
+          recorded_by: string
+          score_a?: number | null
+          score_b?: number | null
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          previous_score_a?: number | null
+          previous_score_b?: number | null
+          reason?: string
+          recorded_at?: string
+          recorded_by?: string
+          score_a?: number | null
+          score_b?: number | null
+          tenant_id?: string
+          tournament_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_result_history_tenant_id_tournament_id_match_id_fkey"
+            columns: ["tenant_id", "tournament_id", "match_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_matches"
+            referencedColumns: ["tenant_id", "tournament_id", "id"]
           },
         ]
       }
@@ -1720,6 +1782,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "membership_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_tournament_result: {
+        Args: {
+          p_expected_version: number
+          p_match_id: string
+          p_reason: string
+          p_score_a: number
+          p_score_b: number
+          p_tournament_id: string
+        }
+        Returns: {
+          category_id: string
+          group_id: string
+          id: string
+          number: number
+          result_version: number
+          score_a: number | null
+          score_b: number | null
+          team_a_id: string
+          team_b_id: string
+          tenant_id: string
+          tournament_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournament_matches"
           isOneToOne: true
           isSetofReturn: false
         }

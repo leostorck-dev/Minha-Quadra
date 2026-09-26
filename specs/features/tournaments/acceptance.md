@@ -9,6 +9,14 @@
 - Professor e outra arena não veem nem alteram torneios privados.
 # Grupos e confrontos
 
+## Resultados
+
+- Gestor lança, corrige e anula um resultado com justificativa; a classificação é recalculada e o histórico é preservado.
+- Placar negativo, acima de 99, fracionário, empate, apenas um lado nulo e versão desatualizada são recusados.
+- Recepção consulta mas não altera; outras arenas não leem nem alteram; escrita direta e exclusão do histórico são negadas.
+- `tests/tournaments.results.test.mjs` verifica validação, partidas pendentes, correção/anulação, saldo, pontos marcados e empate completo.
+- `tests/tournament-results.database.sql` verifica RPC, histórico, versão antiga, anulação e permissões numa transação com rollback.
+
 - Gestor encerra as inscrições, escolhe a categoria e tamanho máximo, confirma e visualiza o sorteio persistido.
 - Duplas retiradas não participam; todas as inscritas entram exatamente uma vez.
 - Grupos equilibrados, de 2 até o máximo escolhido; cada par joga uma vez dentro do grupo.

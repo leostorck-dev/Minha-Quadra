@@ -8,4 +8,12 @@ Após encerrar as inscrições, proprietário ou gerente pode sortear cada categ
 
 O sorteio é definitivo nesta etapa. A primeira categoria sorteada bloqueia a reabertura das inscrições de todo o torneio. Categorias sem o mínimo de duplas ficam sem sorteio; confira todas as inscrições antes de começar. A recepção consulta grupos e confrontos, mas não sorteia. Os nomes das duplas são registrados no momento do sorteio.
 
-Resultados, classificação, horários dos jogos e fases eliminatórias serão implementados nas próximas etapas.
+## Resultados e classificação dos grupos
+
+Proprietário e gerente lançam um placar simples por partida: dois inteiros de 0 a 99, sem empate. Esta etapa não modela sets separados, W.O. ou regulamentos específicos de modalidades. Cada lançamento ou correção exige uma observação de 3 a 200 caracteres. É possível anular um resultado, devolvendo o confronto a pendente, com justificativa.
+
+Toda alteração preserva placares anteriores, autor, data e versão no histórico. A tela mostra as últimas 50 alterações de cada jogo. A versão esperada evita que um formulário antigo sobrescreva uma alteração concorrente. Recepção consulta resultados e histórico; professor e outras arenas não acessam.
+
+A classificação considera apenas jogos com resultado. Ordem: vitórias, saldo do placar e pontos marcados. Empate em todos os critérios compartilha a posição, sem classificação automática para eliminatórias. São mostrados jogos, vitórias, derrotas, pontos pró/contra e saldo. A classificação é parcial enquanto houver partidas pendentes.
+
+Horários dos jogos, regulamentos específicos e fases eliminatórias serão implementados nas próximas etapas.

@@ -110,3 +110,33 @@ export function parseDraw(value: unknown) {
     throw new ValidationError("Escolha grupos de até 3 ou 4 duplas.");
   return { categoryId: uuid(data.categoryId), groupSize: data.groupSize };
 }
+
+export function parseResult(value: unknown) {
+  const data = record(value, ["scoreA", "scoreB", "expectedVersion", "reason"]);
+  const score = (v: unknown): number | null => {
+    if (v === null) return null;
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 99)
+      throw new ValidationError("Informe placares inteiros de 0 a 99.");
+    return v;
+  };
+  const scoreA = score(data.scoreA),
+    scoreB = score(data.scoreB);
+  if (
+    (scoreA === null) !== (scoreB === null) ||
+    (scoreA !== null && scoreA === scoreB)
+  )
+    throw new ValidationError("Informe os dois placares, sem empate.");
+  if (
+    typeof data.expectedVersion !== "number" ||
+    !Number.isInteger(data.expectedVersion) ||
+    data.expectedVersion < 0 ||
+    data.expectedVersion > 2147483646
+  )
+    throw new ValidationError("Versão do resultado inválida.");
+  const reason = typeof data.reason === "string" ? data.reason.trim() : "";
+  if (reason.length < 3 || reason.length > 200)
+    throw new ValidationError(
+      "Informe uma justificativa de 3 a 200 caracteres.",
+    );
+  return { scoreA, scoreB, expectedVersion: data.expectedVersion, reason };
+}

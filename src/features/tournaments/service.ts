@@ -2,7 +2,7 @@ import type { AuthContext } from "@/lib/auth/context";
 import { ForbiddenError } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
-import type { TournamentCategoryName } from "./validation";
+import type { TournamentCategoryName, parseResult } from "./validation";
 
 export type Tournament = Database["public"]["Tables"]["tournaments"]["Row"];
 export type TournamentCategory =
@@ -219,5 +219,52 @@ export async function drawCategory(
     p_group_size: groupSize,
   });
   check(error, "Não foi possível sortear a categoria.");
+  return data;
+}
+
+export async function recordResult(
+  tournamentId: string,
+  matchId: string,
+  input: ReturnType<typeof parseResult>,
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_tournament_result", {
+    p_tournament_id: tournamentId,
+    p_match_id: matchId,
+    // Supabase's generated RPC types omit nullable parameters; null clears a result.
+    p_score_a: input.scoreA!,
+    p_score_b: input.scoreB!,
+    p_expected_version: input.expectedVersion,
+    p_reason: input.reason,
+  });
+  check(error, "Não foi possível salvar o resultado.");
+  return data;
+}
+
+export async function resultHistory(
+  context: AuthContext,
+  tournamentId: string,
+  matchId: string,
+) {
+  const supabase = await createClient();
+  const match = await supabase
+    .from("tournament_matches")
+    .select("id")
+    .eq("tenant_id", context.tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("id", matchId)
+    .maybeSingle();
+  check(match.error, "Não foi possível consultar o confronto.");
+  if (!match.data)
+    throw new TournamentNotFoundError("Confronto não encontrado.");
+  const { data, error } = await supabase
+    .from("tournament_result_history")
+    .select("version,score_a,score_b,reason,recorded_at")
+    .eq("tenant_id", context.tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("match_id", matchId)
+    .order("version", { ascending: false })
+    .limit(50);
+  check(error, "Não foi possível consultar o histórico.");
   return data;
 }
