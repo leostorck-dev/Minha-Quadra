@@ -179,3 +179,16 @@ test("próximos sete dias inclui hoje e atravessa mês e ano no fuso da arena", 
     { column: "due_date", start: "2026-09-28", end: "2026-10-05" },
   );
 });
+
+import { parseFinanceReport } from "../src/features/finance/validation.ts";
+test("exportação valida formato e preserva o detalhado por padrão", () => {
+  assert.equal(parseFinanceReport(new URLSearchParams()), "transactions");
+  assert.equal(
+    parseFinanceReport(new URLSearchParams("report=categories")),
+    "categories",
+  );
+  assert.throws(
+    () => parseFinanceReport(new URLSearchParams("report=invalid")),
+    ValidationError,
+  );
+});

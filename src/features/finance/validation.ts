@@ -241,3 +241,10 @@ export function financeWindow(
       .toString(),
   };
 }
+
+export function parseFinanceReport(params: URLSearchParams) {
+  const report = params.get("report") ?? "transactions";
+  if (report !== "transactions" && report !== "categories")
+    throw new ValidationError("Relatório financeiro inválido.");
+  return report;
+}

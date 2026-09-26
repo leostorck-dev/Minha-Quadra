@@ -27,12 +27,13 @@ export function FinanceExport({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  async function download() {
+  async function download(report: "transactions" | "categories") {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
       const params = new URLSearchParams({
+        report,
         scope,
         month,
         type,
@@ -59,6 +60,11 @@ export function FinanceExport({
           : scope === "upcoming"
             ? "financeiro-proximos-7-dias.csv"
             : `financeiro-${month}-${type}-${status}.csv`;
+      if (report === "categories")
+        link.download = link.download.replace(
+          "financeiro-",
+          "financeiro-categorias-",
+        );
       document.body.append(link);
       link.click();
       link.remove();
@@ -78,14 +84,24 @@ export function FinanceExport({
       <button
         type="button"
         disabled={busy}
-        onClick={() => void download()}
+        onClick={() => void download("transactions")}
         className="rounded-lg border border-white/20 px-4 py-2 text-sm disabled:opacity-50"
       >
         {busy ? "Preparando CSV…" : "Exportar lançamentos em CSV"}
       </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void download("categories")}
+        className="ml-2 mt-2 rounded-lg border border-white/20 px-4 py-2 text-sm disabled:opacity-50"
+      >
+        Exportar resumo por categoria
+      </button>
       <p className="mt-2 text-xs text-slate-400">
         O arquivo inclui todas as páginas com os filtros selecionados. Valores
-        em reais; horários de pagamento em UTC.
+        em reais; horários de pagamento em UTC. O resumo separa receitas,
+        despesas e situações; valores cancelados não representam movimentação
+        efetiva.
       </p>
       {busy && (
         <p role="status" className="mt-2 text-sm">
