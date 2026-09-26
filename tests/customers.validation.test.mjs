@@ -98,3 +98,39 @@ test("normaliza etiquetas e rejeita duplicatas", () => {
     ValidationError,
   );
 });
+
+import { customerReport } from "../src/features/customers/reports.ts";
+test("CSV de clientes preserva contatos, indicadores e protege fórmulas", () => {
+  const item = {
+    id: "id",
+    name: "=1+1",
+    phone: "+5531999999999",
+    email: "a@example.invalid",
+    birthDate: null,
+    status: "inactive",
+    tags: ["vip", "areia"],
+    reservationCount: 12,
+    lastReservationAt: "2026-09-26T10:00:00-03:00",
+    notes: "nota privada",
+    createdAt: "",
+    updatedAt: "",
+  };
+  const csv = customerReport([item]);
+  assert.ok(csv.startsWith("\ufeff"));
+  assert.ok(csv.includes("'=1+1"));
+  assert.ok(csv.includes("'+5531999999999"));
+  assert.ok(
+    csv.includes('"Inativo";"vip, areia";12;"2026-09-26T13:00:00.000Z"'),
+  );
+  assert.ok(!csv.includes("nota privada"));
+  assert.equal(customerReport([]).split("\r\n").length, 2);
+  assert.equal(
+    customerReport(
+      Array.from({ length: 1105 }, () => ({
+        ...item,
+        lastReservationAt: null,
+      })),
+    ).split("\r\n").length,
+    1107,
+  );
+});

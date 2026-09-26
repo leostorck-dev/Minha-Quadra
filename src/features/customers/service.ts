@@ -1,3 +1,4 @@
+import { collectById } from "@/lib/database/pagination";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
@@ -83,7 +84,7 @@ function isUuid(value: string) {
   );
 }
 
-export async function listCustomers(
+async function customerQuery(
   context: AuthContext,
   options: {
     query: string;
@@ -92,19 +93,18 @@ export async function listCustomers(
     tag: string | null;
     segment: CustomerSegment;
   },
+  now = Date.now(),
+  count = true,
 ) {
   const supabase = await createClient();
-  const pageSize = 20;
-  const from = (options.page - 1) * pageSize;
   let query = supabase
     .from("customer_crm")
-    .select("*", { count: "exact" })
+    .select("*", count ? { count: "exact" } : {})
     .eq("tenant_id", context.tenantId);
 
   if (options.status !== "all") query = query.eq("status", options.status);
   if (options.query) query = query.ilike("name", `%${options.query}%`);
   if (options.tag) query = query.contains("tags", [options.tag]);
-  const now = Date.now();
   if (options.segment === "lapsed_15" || options.segment === "lapsed_30") {
     const days = options.segment === "lapsed_15" ? 15 : 30;
     query = query
@@ -134,8 +134,19 @@ export async function listCustomers(
     query = query.eq("birth_month", month);
   }
 
+  return { query };
+}
+
+export async function listCustomers(
+  context: AuthContext,
+  options: Parameters<typeof customerQuery>[1],
+) {
+  const { query } = await customerQuery(context, options);
+  const pageSize = 20;
+  const from = (options.page - 1) * pageSize;
   const { data, count, error } = await query
     .order("created_at", { ascending: false })
+    .order("id")
     .range(from, from + pageSize - 1);
 
   if (error) throw new Error("Não foi possível listar os clientes.");
@@ -237,4 +248,21 @@ export async function deactivateCustomer(context: AuthContext, id: string) {
 
   if (error) throw new Error("Não foi possível inativar o cliente.");
   if (!data) throw new CustomerNotFoundError();
+}
+
+export async function exportCustomers(
+  context: AuthContext,
+  options: Parameters<typeof customerQuery>[1],
+) {
+  const now = Date.now();
+  const rows = await collectById<CustomerListItem>(async (after) => {
+    const base = await customerQuery(context, options, now, false);
+    let query = base.query.order("id").limit(200);
+    if (after) query = query.gt("id", after);
+    const { data, error } = await query;
+    return { data: data?.map(toCustomerListItem) ?? null, error };
+  }, "Não foi possível exportar todos os clientes. Tente novamente.");
+  return rows.sort(
+    (a, b) => a.name.localeCompare(b.name, "pt-BR") || a.id.localeCompare(b.id),
+  );
 }

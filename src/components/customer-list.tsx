@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CustomerExport } from "@/components/customer-export";
 import { useEffect, useState, type FormEvent } from "react";
 import type { CustomerListItem } from "@/features/customers/service";
 
@@ -158,6 +159,12 @@ export function CustomerList() {
         </select>
       </div>
 
+      <CustomerExport
+        query={query}
+        status={status}
+        tag={tag}
+        segment={segment}
+      />
       {segment !== "all" && (
         <p className="mt-3 text-xs text-slate-500">
           Segmentos usam reservas confirmadas, com check-in ou concluídas.
