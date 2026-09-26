@@ -1,5 +1,6 @@
 "use client";
 
+import { MembershipPaymentExport } from "@/components/membership-payment-export";
 import { useEffect, useState } from "react";
 import type {
   MembershipOverview,
@@ -166,6 +167,11 @@ export function MembershipPaymentHistory({
         {timezone}). Sem mês selecionado, exibe todo o histórico. O mês filtra a
         data do recebimento; o vencimento quitado aparece em cada registro.
       </p>
+      <MembershipPaymentExport
+        membershipId={membershipId}
+        month={month}
+        method={method}
+      />
       {!current && (
         <p role="status" className="mt-4 text-sm">
           Carregando pagamentos…

@@ -194,15 +194,18 @@ export type MembershipPaymentsPage = {
   pageSize: number;
 };
 
-export async function listMembershipPayments(
+async function membershipPaymentQuery(
   context: AuthContext,
   options: ReturnType<typeof parsePaymentSearch>,
-): Promise<MembershipPaymentsPage> {
+  count = true,
+) {
   const supabase = await createClient();
-  const pageSize = 25;
   let query = supabase
     .from("membership_payments")
-    .select("*", { count: "exact" })
+    .select(
+      "*, membership:customer_memberships!membership_payments_membership_fk(customer:customers!customer_memberships_customer_fk(name), plan:membership_plans!customer_memberships_plan_fk(name))",
+      count ? { count: "exact" } : {},
+    )
     .eq("tenant_id", context.tenantId);
   if (options.membershipId)
     query = query.eq("membership_id", options.membershipId);
@@ -218,6 +221,15 @@ export async function listMembershipPayments(
     const window = paymentMonthWindow(options.month, arena.timezone);
     query = query.gte("paid_at", window.start).lt("paid_at", window.end);
   }
+  return { query };
+}
+
+export async function listMembershipPayments(
+  context: AuthContext,
+  options: ReturnType<typeof parsePaymentSearch>,
+): Promise<MembershipPaymentsPage> {
+  const { query } = await membershipPaymentQuery(context, options);
+  const pageSize = 25;
   const result = await query
     .order("paid_at", { ascending: false })
     .order("id", { ascending: false })
@@ -230,4 +242,39 @@ export async function listMembershipPayments(
     page: options.page,
     pageSize,
   };
+}
+
+export type MembershipPaymentReportItem = MembershipPayment & {
+  customerName: string;
+  planName: string;
+};
+
+export async function exportMembershipPayments(
+  context: AuthContext,
+  options: ReturnType<typeof parsePaymentSearch>,
+) {
+  const rows = await collectById<MembershipPaymentReportItem>(async (after) => {
+    const base = await membershipPaymentQuery(context, options, false);
+    let query = base.query.order("id").limit(200);
+    if (after) query = query.gt("id", after);
+    const { data, error } = await query;
+    return {
+      error,
+      data:
+        data?.map((row) => {
+          if (!row.membership?.customer?.name || !row.membership?.plan?.name)
+            throw new Error(
+              "Não foi possível carregar o cliente e plano de todos os pagamentos.",
+            );
+          return {
+            ...row,
+            customerName: row.membership.customer.name,
+            planName: row.membership.plan.name,
+          };
+        }) ?? null,
+    };
+  }, "Não foi possível exportar todos os pagamentos. Tente novamente.");
+  return rows.sort(
+    (a, b) => b.paid_at.localeCompare(a.paid_at) || b.id.localeCompare(a.id),
+  );
 }

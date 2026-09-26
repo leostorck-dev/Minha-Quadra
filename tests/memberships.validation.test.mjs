@@ -102,3 +102,31 @@ test("mês recebido usa meia-noite local e atravessa o ano", () => {
     end: "2026-09-30T15:00:00Z",
   });
 });
+
+import { membershipPaymentReport } from "../src/features/memberships/reports.ts";
+test("CSV de mensalidades separa recebimento de vencimento e mantém centavos e nomes", () => {
+  const item = {
+    id: "pagamento",
+    membership_id: "assinatura",
+    customerName: "=1+1",
+    planName: "Plano; Ouro",
+    period_due_on: "2026-08-10",
+    amount: 123.45,
+    method: "pix",
+    paid_at: "2026-09-26T10:00:00-03:00",
+  };
+  const report = membershipPaymentReport([item]);
+  assert.ok(report.startsWith("\ufeff"));
+  assert.ok(report.includes("'=1+1"));
+  assert.ok(report.includes('"Plano; Ouro"'));
+  assert.ok(
+    report.includes('"2026-08-10";"123,45";"Pix";"2026-09-26T13:00:00.000Z"'),
+  );
+  assert.equal(membershipPaymentReport([]).split("\r\n").length, 2);
+  assert.equal(
+    membershipPaymentReport(Array.from({ length: 1105 }, () => item)).split(
+      "\r\n",
+    ).length,
+    1107,
+  );
+});
