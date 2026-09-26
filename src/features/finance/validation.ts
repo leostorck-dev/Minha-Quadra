@@ -27,6 +27,27 @@ export const FINANCE_CATEGORIES = {
 export type FinanceType = keyof typeof FINANCE_CATEGORIES;
 export type FinanceStatus = "pending" | "paid" | "cancelled";
 
+export const FINANCE_SOURCE_TYPES = [
+  "manual",
+  "reservation",
+  "refund",
+  "membership",
+  "class",
+  "class_refund",
+  "coach_commission",
+] as const;
+export type FinanceSource = (typeof FINANCE_SOURCE_TYPES)[number];
+export const FINANCE_FILTER_CATEGORIES: readonly string[] = [
+  ...FINANCE_CATEGORIES.income,
+  ...FINANCE_CATEGORIES.expense,
+  "Estorno de reserva",
+  "Estorno de aula",
+];
+
+export function financeSearchPattern(query: string) {
+  return `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+}
+
 export type FinanceCreate = {
   type: FinanceType;
   category: string;
@@ -41,6 +62,9 @@ export type FinanceList = {
   page: number;
   type: FinanceType | "all";
   status: FinanceStatus | "all";
+  source: FinanceSource | "all";
+  category: string;
+  query: string;
 };
 
 function objectWithKeys(value: unknown, keys: string[]) {
@@ -158,5 +182,25 @@ export function parseFinanceList(params: URLSearchParams): FinanceList {
   ) {
     throw new ValidationError("Filtro de situação inválido.");
   }
-  return { month, page, type, status };
+  const source = params.get("source") ?? "all";
+  const category = params.get("category") ?? "all";
+  const query = (params.get("q") ?? "").trim();
+  if (
+    source !== "all" &&
+    !FINANCE_SOURCE_TYPES.includes(source as FinanceSource)
+  )
+    throw new ValidationError("Origem inválida.");
+  if (category !== "all" && !FINANCE_FILTER_CATEGORIES.includes(category))
+    throw new ValidationError("Categoria inválida.");
+  if (query.length > 120)
+    throw new ValidationError("A busca deve ter até 120 caracteres.");
+  return {
+    month,
+    page,
+    type,
+    status,
+    source: source as FinanceSource | "all",
+    category,
+    query,
+  };
 }

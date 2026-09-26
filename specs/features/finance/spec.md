@@ -23,3 +23,7 @@ Veja [database.md](./database.md), [api.md](./api.md) e [acceptance.md](./accept
 Proprietário e gerente podem baixar CSV com todos os lançamentos do mês e dos filtros de tipo e situação selecionados, incluindo todas as páginas. O arquivo contém identificador, data de referência da arena, tipo, categoria, descrição, valor em reais, situação, vencimento, pagamento em UTC e origem. Distingue reservas, estornos, mensalidades, aulas e comissões. Pendentes e cancelados permanecem identificados; não são apresentados como pagamentos realizados.
 
 O CSV usa UTF-8 com BOM, ponto e vírgula e duas casas decimais com vírgula. Textos são escapados contra fórmulas. O arquivo vazio contém os cabeçalhos. A leitura em lotes evita truncamento; falha intermediária impede baixar um relatório parcial. A exportação consulta o estado atual e pode refletir alterações simultâneas entre lotes; não constitui um fechamento imutável. Nenhum contato de cliente é incluído.
+
+## Consulta detalhada
+
+A lista e a exportação CSV compartilham filtros de origem, categoria e busca literal na descrição, além de mês, tipo e situação. Origens incluem lançamentos manuais, reservas, estornos, mensalidades, aulas e comissões. Categorias incluem estornos automáticos. Buscar ou trocar filtros retorna à primeira página; o resumo mensal continua global e identificado como tal. Parâmetros inválidos são recusados e o isolamento entre arenas permanece obrigatório.

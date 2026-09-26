@@ -1,3 +1,4 @@
+import { financeSearchPattern } from "./validation";
 import { collectById } from "@/lib/database/pagination";
 import { Temporal } from "@js-temporal/polyfill";
 import type { AuthContext } from "@/lib/auth/context";
@@ -83,12 +84,18 @@ export async function listFinancialTransactions(
     .lt("activity_on", end);
   if (options.type !== "all") query = query.eq("type", options.type);
   if (options.status !== "all") query = query.eq("status", options.status);
+  if (options.source !== "all") query = query.eq("source_type", options.source);
+  if (options.category !== "all")
+    query = query.eq("category", options.category);
+  if (options.query)
+    query = query.ilike("description", financeSearchPattern(options.query));
 
   const [{ data, error, count }, { data: summaryData, error: summaryError }] =
     await Promise.all([
       query
         .order("activity_on", { ascending: false })
         .order("created_at", { ascending: false })
+        .order("id")
         .range((options.page - 1) * pageSize, options.page * pageSize - 1),
       supabase.rpc("finance_month_summary", { p_month: start }),
     ]);
@@ -130,6 +137,12 @@ export async function exportFinancialTransactions(
       .limit(200);
     if (options.type !== "all") query = query.eq("type", options.type);
     if (options.status !== "all") query = query.eq("status", options.status);
+    if (options.source !== "all")
+      query = query.eq("source_type", options.source);
+    if (options.category !== "all")
+      query = query.eq("category", options.category);
+    if (options.query)
+      query = query.ilike("description", financeSearchPattern(options.query));
     if (after) query = query.gt("id", after);
     return query;
   }, "Não foi possível exportar todos os lançamentos. Tente novamente.");

@@ -1,3 +1,7 @@
+import {
+  financeSearchPattern,
+  FINANCE_SOURCE_TYPES,
+} from "../src/features/finance/validation.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -68,10 +72,50 @@ test("limita transições e filtros de listagem", () => {
     parseFinanceList(
       new URLSearchParams("month=2026-09&page=2&type=expense&status=pending"),
     ),
-    { month: "2026-09", page: 2, type: "expense", status: "pending" },
+    {
+      month: "2026-09",
+      page: 2,
+      type: "expense",
+      status: "pending",
+      source: "all",
+      category: "all",
+      query: "",
+    },
   );
   assert.throws(
     () => parseFinanceList(new URLSearchParams("month=2026-13")),
     ValidationError,
   );
+});
+
+test("combina origem, categoria e descrição e rejeita filtros inválidos", () => {
+  for (const source of FINANCE_SOURCE_TYPES) {
+    assert.equal(
+      parseFinanceList(new URLSearchParams({ month: "2026-09", source }))
+        .source,
+      source,
+    );
+  }
+  const filters = parseFinanceList(
+    new URLSearchParams({
+      month: "2026-09",
+      source: "class_refund",
+      category: "Estorno de aula",
+      q: "  Cliente 50%  ",
+    }),
+  );
+  assert.equal(filters.category, "Estorno de aula");
+  assert.equal(filters.query, "Cliente 50%");
+  assert.equal(financeSearchPattern("50%_"), "%50\\%\\_%");
+  for (const invalid of [
+    { source: "other" },
+    { category: "other" },
+    { q: "a".repeat(121) },
+  ]) {
+    assert.throws(
+      () =>
+        parseFinanceList(new URLSearchParams({ month: "2026-09", ...invalid })),
+      ValidationError,
+    );
+  }
 });

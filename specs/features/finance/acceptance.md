@@ -16,3 +16,7 @@
 - Exportação vazia contém cabeçalhos; pendentes/cancelados não recebem data de pagamento fictícia. Horários são explicitamente UTC.
 - Recepção, professor e usuários sem sessão não exportam; outra arena não aparece no arquivo.
 - `tests/finance.reports.test.mjs` verifica formato, origens, valores extremos, situações, fórmulas e 1.105 linhas. O coletor compartilhado tem teste para paginação e falha intermediária em `tests/tournaments.pagination.test.mjs`.
+
+## Consulta detalhada
+
+A lista e a exportação CSV compartilham filtros de origem, categoria e busca literal na descrição, além de mês, tipo e situação. Origens incluem lançamentos manuais, reservas, estornos, mensalidades, aulas e comissões. Categorias incluem estornos automáticos. Buscar ou trocar filtros retorna à primeira página; o resumo mensal continua global e identificado como tal. Parâmetros inválidos são recusados e o isolamento entre arenas permanece obrigatório.

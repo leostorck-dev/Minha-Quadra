@@ -9,3 +9,7 @@ O servidor resolve o tenant pelo usuário autenticado, exige papel OWNER ou MANA
 ## Exportação
 
 `GET /api/finance/export?month=2026-09&type=all&status=all` exige proprietário ou gerente. Aceita os mesmos filtros da listagem; `page` não limita o conteúdo exportado. Retorna CSV completo em ordem de data de referência, criação e identificador, com `Content-Disposition: attachment`, `Cache-Control: private, no-store` e `X-Content-Type-Options: nosniff`. Parâmetros inválidos retornam 400; sem sessão, 401; papel não permitido, 403. A arena deriva da sessão autenticada e continua sujeita às políticas RLS.
+
+## Filtros detalhados
+
+Listagem e exportação aceitam `source` (`all`, `manual`, `reservation`, `refund`, `membership`, `class`, `class_refund`, `coach_commission`), `category` (`all` ou categoria conhecida, incluindo estornos automáticos) e `q` (descrição, até 120 caracteres). Busca sem diferenciar maiúsculas/minúsculas; %, _ e barras são tratados literalmente. Os filtros são combinados e aplicados no servidor antes da paginação. Não alteram o resumo mensal global.

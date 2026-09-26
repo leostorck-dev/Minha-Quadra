@@ -1,16 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import type { FinanceStatus, FinanceType } from "@/features/finance/validation";
+import type {
+  FinanceStatus,
+  FinanceType,
+  FinanceSource,
+} from "@/features/finance/validation";
 
 export function FinanceExport({
   month,
   type,
   status,
+  source,
+  category,
+  query,
 }: {
   month: string;
   type: FinanceType | "all";
   status: FinanceStatus | "all";
+  source: FinanceSource | "all";
+  category: string;
+  query: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +29,14 @@ export function FinanceExport({
     setBusy(true);
     setError("");
     try {
-      const params = new URLSearchParams({ month, type, status });
+      const params = new URLSearchParams({
+        month,
+        type,
+        status,
+        source,
+        category,
+        q: query,
+      });
       const response = await fetch(`/api/finance/export?${params}`, {
         cache: "no-store",
       });
@@ -58,8 +75,8 @@ export function FinanceExport({
         {busy ? "Preparando CSV…" : "Exportar lançamentos em CSV"}
       </button>
       <p className="mt-2 text-xs text-slate-400">
-        O arquivo inclui todas as páginas do mês, tipo e situação selecionados.
-        Valores em reais; horários de pagamento em UTC.
+        O arquivo inclui todas as páginas com os filtros selecionados. Valores
+        em reais; horários de pagamento em UTC.
       </p>
       {busy && (
         <p role="status" className="mt-2 text-sm">

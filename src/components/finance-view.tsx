@@ -7,6 +7,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { FinancialTransaction } from "@/features/finance/service";
 import {
   FINANCE_CATEGORIES,
+  FINANCE_FILTER_CATEGORIES,
+  FINANCE_SOURCE_TYPES,
+  type FinanceSource,
   type FinanceStatus,
   type FinanceType,
 } from "@/features/finance/validation";
@@ -218,6 +221,10 @@ export function FinanceView({
   const [month, setMonth] = useState(initialMonth);
   const [type, setType] = useState<FinanceType | "all">("all");
   const [status, setStatus] = useState<FinanceStatus | "all">("all");
+  const [source, setSource] = useState<FinanceSource | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<{
@@ -229,7 +236,16 @@ export function FinanceView({
   const [busyId, setBusyId] = useState("");
   const [actionError, setActionError] = useState("");
 
-  const requestKey = JSON.stringify([month, type, status, page, reload]);
+  const requestKey = JSON.stringify([
+    month,
+    type,
+    status,
+    source,
+    categoryFilter,
+    query,
+    page,
+    reload,
+  ]);
   const loading = result?.key !== requestKey;
   const data = loading ? null : result.data;
   const error = loading ? "" : result.error;
@@ -241,6 +257,9 @@ export function FinanceView({
       type,
       status,
       page: String(page),
+      source,
+      category: categoryFilter,
+      q: query,
     });
     fetch(`/api/finance/transactions?${params}`, {
       signal: controller.signal,
@@ -268,7 +287,17 @@ export function FinanceView({
         });
       });
     return () => controller.abort();
-  }, [month, type, status, page, reload, requestKey]);
+  }, [
+    month,
+    type,
+    status,
+    source,
+    categoryFilter,
+    query,
+    page,
+    reload,
+    requestKey,
+  ]);
 
   function moveMonth(delta: number) {
     setMonth(
@@ -401,7 +430,90 @@ export function FinanceView({
         </label>
       </div>
 
-      <FinanceExport month={month} type={type} status={status} />
+      <form
+        className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-slate-900 p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setQuery(search.trim());
+          setPage(1);
+        }}
+      >
+        <label className="text-xs text-slate-400">
+          Origem
+          <select
+            value={source}
+            onChange={(event) => {
+              setSource(event.target.value as FinanceSource | "all");
+              setPage(1);
+            }}
+            className="mt-1 block rounded-lg bg-slate-800 p-2 text-sm text-white"
+          >
+            <option value="all">Todas as origens</option>
+            {FINANCE_SOURCE_TYPES.map((value) => (
+              <option key={value} value={value}>
+                {FINANCE_SOURCES[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-slate-400">
+          Categoria
+          <select
+            value={categoryFilter}
+            onChange={(event) => {
+              setCategoryFilter(event.target.value);
+              setPage(1);
+            }}
+            className="mt-1 block rounded-lg bg-slate-800 p-2 text-sm text-white"
+          >
+            <option value="all">Todas as categorias</option>
+            {FINANCE_FILTER_CATEGORIES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-slate-400">
+          Descrição
+          <input
+            type="search"
+            maxLength={120}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="mt-1 block rounded-lg bg-slate-800 p-2 text-sm text-white"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-lg border border-white/20 px-4 py-2 text-sm"
+        >
+          Buscar
+        </button>
+        <button
+          type="button"
+          className="rounded-lg border border-white/20 px-4 py-2 text-sm"
+          onClick={() => {
+            setType("all");
+            setStatus("all");
+            setSource("all");
+            setCategoryFilter("all");
+            setSearch("");
+            setQuery("");
+            setPage(1);
+          }}
+        >
+          Limpar filtros
+        </button>
+      </form>
+      <FinanceExport
+        month={month}
+        type={type}
+        status={status}
+        source={source}
+        category={categoryFilter}
+        query={query}
+      />
 
       {actionError && (
         <p role="alert" className="mt-5 text-sm text-rose-300">
@@ -426,8 +538,7 @@ export function FinanceView({
       ) : data ? (
         <>
           <p className="mt-6 text-xs text-slate-400">
-            Resumo de todo o mês, independentemente dos filtros de tipo e
-            situação.
+            Resumo de todo o mês, independentemente dos filtros da lista.
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => (
