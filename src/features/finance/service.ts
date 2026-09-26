@@ -95,11 +95,11 @@ export async function listFinancialTransactions(
   const [{ data, error, count }, { data: summaryData, error: summaryError }] =
     await Promise.all([
       query
-        .order("activity_on", { ascending: false })
+        .order(window.column, { ascending: options.scope === "upcoming" })
         .order("created_at", { ascending: false })
         .order("id")
         .range((options.page - 1) * pageSize, options.page * pageSize - 1),
-      options.scope === "overdue"
+      options.scope !== "month"
         ? collectById<{ id: string; amount: number }>((after) => {
             let totals = supabase
               .from("financial_transactions")
@@ -110,9 +110,10 @@ export async function listFinancialTransactions(
               .lt("due_date", window.end)
               .order("id")
               .limit(200);
+            if (window.start) totals = totals.gte("due_date", window.start);
             if (after) totals = totals.gt("id", after);
             return totals;
-          }, "Não foi possível carregar o total vencido.").then((rows) => ({
+          }, "Não foi possível carregar o total de contas.").then((rows) => ({
             data: [
               {
                 income: 0,
@@ -137,6 +138,7 @@ export async function listFinancialTransactions(
     total: count ?? 0,
     page: options.page,
     pageSize,
+    period: { start: window.start, end: window.end },
     overdueBefore: options.scope === "overdue" ? window.end : null,
     summary: {
       income: row?.income ?? 0,

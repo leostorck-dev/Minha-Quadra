@@ -57,9 +57,11 @@ export type FinanceCreate = {
   dueDate: string | null;
 };
 
+export type FinanceScope = "month" | "overdue" | "upcoming";
+
 export type FinanceList = {
   month: string;
-  scope: "month" | "overdue";
+  scope: FinanceScope;
   page: number;
   type: FinanceType | "all";
   status: FinanceStatus | "all";
@@ -163,7 +165,7 @@ export function parseFinanceUpdate(value: unknown) {
 
 export function parseFinanceList(params: URLSearchParams): FinanceList {
   const scope = params.get("scope") ?? "month";
-  if (scope !== "month" && scope !== "overdue")
+  if (scope !== "month" && scope !== "overdue" && scope !== "upcoming")
     throw new ValidationError("Visão financeira inválida.");
   const month = params.get("month") ?? "";
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
@@ -202,8 +204,8 @@ export function parseFinanceList(params: URLSearchParams): FinanceList {
     month,
     scope,
     page,
-    type: scope === "overdue" ? "expense" : type,
-    status: scope === "overdue" ? "pending" : status,
+    type: scope !== "month" ? "expense" : type,
+    status: scope !== "month" ? "pending" : status,
     source: source as FinanceSource | "all",
     category,
     query,
@@ -215,11 +217,19 @@ export function financeWindow(
   timezone: string,
   instant = Temporal.Now.instant(),
 ) {
+  const today = instant.toZonedDateTimeISO(timezone).toPlainDate();
+  if (options.scope === "upcoming") {
+    return {
+      column: "due_date" as const,
+      start: today.toString(),
+      end: today.add({ days: 7 }).toString(),
+    };
+  }
   if (options.scope === "overdue") {
     return {
       column: "due_date" as const,
       start: null,
-      end: instant.toZonedDateTimeISO(timezone).toPlainDate().toString(),
+      end: today.toString(),
     };
   }
   return {

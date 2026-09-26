@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type {
   FinanceStatus,
+  FinanceScope,
   FinanceType,
   FinanceSource,
 } from "@/features/finance/validation";
@@ -16,7 +17,7 @@ export function FinanceExport({
   category,
   query,
 }: {
-  scope: "month" | "overdue";
+  scope: FinanceScope;
   month: string;
   type: FinanceType | "all";
   status: FinanceStatus | "all";
@@ -55,7 +56,9 @@ export function FinanceExport({
       link.download =
         scope === "overdue"
           ? "financeiro-contas-vencidas.csv"
-          : `financeiro-${month}-${type}-${status}.csv`;
+          : scope === "upcoming"
+            ? "financeiro-proximos-7-dias.csv"
+            : `financeiro-${month}-${type}-${status}.csv`;
       document.body.append(link);
       link.click();
       link.remove();

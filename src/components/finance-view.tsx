@@ -10,6 +10,7 @@ import {
   FINANCE_FILTER_CATEGORIES,
   FINANCE_SOURCE_TYPES,
   type FinanceSource,
+  type FinanceScope,
   type FinanceStatus,
   type FinanceType,
 } from "@/features/finance/validation";
@@ -29,6 +30,7 @@ type FinanceResponse = {
   page: number;
   pageSize: number;
   overdueBefore: string | null;
+  period: { start: string | null; end: string };
   summary: { income: number; expense: number; result: number; payable: number };
 };
 
@@ -219,7 +221,7 @@ export function FinanceView({
   initialMonth: string;
   today: string;
 }) {
-  const [scope, setScope] = useState<"month" | "overdue">("month");
+  const [scope, setScope] = useState<FinanceScope>("month");
   const [month, setMonth] = useState(initialMonth);
   const [type, setType] = useState<FinanceType | "all">("all");
   const [status, setStatus] = useState<FinanceStatus | "all">("all");
@@ -347,8 +349,16 @@ export function FinanceView({
   }
 
   const summaryCards = data
-    ? scope === "overdue"
-      ? [{ label: "Total de contas vencidas", value: data.summary.payable }]
+    ? scope !== "month"
+      ? [
+          {
+            label:
+              scope === "overdue"
+                ? "Total de contas vencidas"
+                : "Total previsto nos próximos 7 dias",
+            value: data.summary.payable,
+          },
+        ]
       : [
           { label: "Receitas pagas", value: data.summary.income },
           { label: "Despesas pagas", value: data.summary.expense },
@@ -381,19 +391,26 @@ export function FinanceView({
         <select
           value={scope}
           onChange={(event) => {
-            setScope(event.target.value as "month" | "overdue");
+            setScope(event.target.value as FinanceScope);
             setPage(1);
           }}
           className="ml-3 rounded-lg bg-slate-800 p-2"
         >
           <option value="month">Movimentação mensal</option>
           <option value="overdue">Contas vencidas</option>
+          <option value="upcoming">Vencem nos próximos 7 dias</option>
         </select>
       </label>
       {scope === "overdue" && (
         <p className="mt-3 text-sm text-slate-400">
           Despesas pendentes vencidas, incluindo meses anteriores. Contas que
           vencem hoje não entram nesta visão.
+        </p>
+      )}
+      {scope === "upcoming" && (
+        <p className="mt-3 text-sm text-slate-400">
+          Despesas pendentes de hoje até os seis dias seguintes, no fuso da
+          arena.
         </p>
       )}
       {scope === "month" && (
@@ -571,8 +588,23 @@ export function FinanceView({
           <p className="mt-6 text-xs text-slate-400">
             {scope === "overdue"
               ? "Total vencido de todos os meses, independentemente dos filtros da lista."
-              : "Resumo de todo o mês, independentemente dos filtros da lista."}
+              : scope === "upcoming"
+                ? "Total previsto no período, independentemente dos filtros da lista."
+                : "Resumo de todo o mês, independentemente dos filtros da lista."}
           </p>
+          {scope === "upcoming" && data.period.start && (
+            <p className="mt-2 text-xs text-slate-400">
+              Vencimentos de {data.period.start.split("-").reverse().join("/")}{" "}
+              a{" "}
+              {Temporal.PlainDate.from(data.period.end)
+                .subtract({ days: 1 })
+                .toString()
+                .split("-")
+                .reverse()
+                .join("/")}
+              .
+            </p>
+          )}
           <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => (
               <div

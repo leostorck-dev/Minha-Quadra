@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     return new Response(financeReport(items), {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="financeiro-${options.scope === "overdue" ? "contas-vencidas" : `${options.month}-${options.type}-${options.status}`}.csv"`,
+        "Content-Disposition": `attachment; filename="financeiro-${options.scope === "overdue" ? "contas-vencidas" : options.scope === "upcoming" ? "proximos-7-dias" : `${options.month}-${options.type}-${options.status}`}.csv"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

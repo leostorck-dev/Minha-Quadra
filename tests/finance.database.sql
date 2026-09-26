@@ -78,6 +78,15 @@ begin
   if (select sum(amount) from public.financial_transactions where type = 'expense' and status = 'pending' and due_date < (now() at time zone 'America/Sao_Paulo')::date) <> 12.34 then
     raise exception 'Total vencido incluiu contas indevidas ou perdeu meses anteriores';
   end if;
+  insert into public.financial_transactions (tenant_id, type, category, description, amount, status, due_date)
+  values
+    ('11111111-aaaa-4111-8111-111111111113','expense','Energia','Último dia',6,'pending',(now() at time zone 'America/Sao_Paulo')::date + 6),
+    ('11111111-aaaa-4111-8111-111111111113','expense','Energia','Após janela',7,'pending',(now() at time zone 'America/Sao_Paulo')::date + 7);
+  if (select sum(amount) from public.financial_transactions where type = 'expense' and status = 'pending'
+      and due_date >= (now() at time zone 'America/Sao_Paulo')::date
+      and due_date < (now() at time zone 'America/Sao_Paulo')::date + 7) <> 56 then
+    raise exception 'Janela de sete dias incluiu vencidas ou ultrapassou limite';
+  end if;
   update public.financial_transactions set status = 'cancelled' where description = 'Vencida antiga';
   if exists(select 1 from public.financial_transactions where type = 'expense' and status = 'pending' and due_date < (now() at time zone 'America/Sao_Paulo')::date) then
     raise exception 'Conta cancelada permaneceu vencida';

@@ -155,3 +155,27 @@ test("vencidas usa data da arena na virada UTC e não restringe mês", () => {
     { column: "activity_on", start: "2026-12-01", end: "2027-01-01" },
   );
 });
+
+test("próximos sete dias inclui hoje e atravessa mês e ano no fuso da arena", () => {
+  const options = parseFinanceList(
+    new URLSearchParams("month=2020-01&scope=upcoming&type=income&status=paid"),
+  );
+  assert.equal(options.type, "expense");
+  assert.equal(options.status, "pending");
+  assert.deepEqual(
+    financeWindow(
+      options,
+      "America/Sao_Paulo",
+      Temporal.Instant.from("2027-01-01T01:00:00Z"),
+    ),
+    { column: "due_date", start: "2026-12-31", end: "2027-01-07" },
+  );
+  assert.deepEqual(
+    financeWindow(
+      options,
+      "America/Sao_Paulo",
+      Temporal.Instant.from("2026-09-28T12:00:00Z"),
+    ),
+    { column: "due_date", start: "2026-09-28", end: "2026-10-05" },
+  );
+});
