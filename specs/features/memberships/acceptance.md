@@ -16,3 +16,12 @@
 - `tests/memberships.database.sql` confirma histórico após inativação, bloqueio de nova adesão e criação/consumo para o cliente 501, além das verificações de pagamento e isolamento entre arenas. Toda a massa é revertida.
 
 - Uma mutação confirmada continua indicada como concluída quando apenas a atualização da tela falha. Novas alterações ficam bloqueadas até recarregar com sucesso, e os formulários salvos são limpos normalmente. Falha de leitura inicial também oferece recuperação. `tests/memberships.mutations.test.mjs` cobre a separação entre falha de gravação e falha de atualização.
+
+## Histórico paginado
+
+- Acessar pagamentos além dos primeiros 50 e filtrar uma assinatura sem misturar registros de outras assinaturas ou arenas.
+- Distinguir o vencimento quitado da data em que o recebimento foi registrado, exibida no fuso da arena.
+- Preservar identificação de cliente inativo e assinatura cancelada.
+- Troca de filtro reinicia a paginação; respostas atrasadas não substituem a consulta atual; falhas oferecem nova tentativa.
+
+- O teste transacional cria 55 quitações, valida os cinco registros da terceira página, preservação após cancelamento e invisibilidade em outra arena. Toda a massa é revertida ao final.

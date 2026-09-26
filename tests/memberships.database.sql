@@ -113,6 +113,23 @@ begin
   v_membership := public.enroll_customer_membership(v_customer, v_plan.id, current_date);
   if (select count(*) from public.membership_class_usage where membership_id = v_membership.id) <> 1
     then raise exception 'Consumo do cliente além do limite indisponível'; end if;
+  select id into v_customer from public.customers where name = 'Volume 0500';
+  v_membership := public.enroll_customer_membership(v_customer, v_plan.id, (date_trunc('month', current_date) - interval '5 years')::date);
+  for i in 1..55 loop
+    perform public.pay_membership_due(v_membership.id, 'pix');
+  end loop;
+  if (select count(*) from public.membership_payments where membership_id = v_membership.id) <> 55
+    then raise exception 'Histórico de volume incompleto'; end if;
+  if (select count(*) from (select id from public.membership_payments where membership_id = v_membership.id
+      order by paid_at desc, id desc offset 50 limit 25) page) <> 5
+    then raise exception 'Terceira página de pagamentos incorreta'; end if;
+  perform public.cancel_customer_membership(v_membership.id);
+  if (select count(*) from public.membership_payments where membership_id = v_membership.id) <> 55
+    then raise exception 'Cancelamento apagou histórico'; end if;
+  perform set_config('request.jwt.claim.sub', 'b1111111-bbbb-4111-8111-111111111119', true);
+  perform set_config('request.jwt.claims', '{"sub":"b1111111-bbbb-4111-8111-111111111119","role":"authenticated"}', true);
+  if (select count(*) from public.membership_payments where membership_id = v_membership.id) <> 0
+    then raise exception 'Outra arena vê histórico'; end if;
 end;
 $$;
 

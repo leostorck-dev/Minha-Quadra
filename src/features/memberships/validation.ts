@@ -3,6 +3,14 @@ import { ValidationError } from "../../lib/api/validation-error.ts";
 export const MEMBERSHIP_METHODS = ["pix", "cash", "card", "transfer"] as const;
 export type MembershipMethod = (typeof MEMBERSHIP_METHODS)[number];
 
+export function parsePaymentSearch(params: URLSearchParams) {
+  const page = Number(params.get("page") ?? "1");
+  const membershipId = params.get("membershipId");
+  if (!Number.isInteger(page) || page < 1 || page > 10000)
+    throw new ValidationError("Página inválida.");
+  return { page, membershipId: membershipId ? uuid(membershipId) : null };
+}
+
 function record(value: unknown, keys: string[]) {
   if (
     !value ||

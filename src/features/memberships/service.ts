@@ -2,7 +2,7 @@ import { collectById } from "@/lib/database/pagination";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
-import type { MembershipMethod } from "./validation";
+import type { MembershipMethod, parsePaymentSearch } from "./validation";
 
 export type Plan = Database["public"]["Tables"]["membership_plans"]["Row"];
 export type Membership =
@@ -20,7 +20,6 @@ export type MembershipUsage = {
 export type MembershipOverview = {
   plans: Plan[];
   memberships: Membership[];
-  payments: MembershipPayment[];
   customers: { id: string; name: string; status: string }[];
   usage: MembershipUsage[];
 };
@@ -52,7 +51,7 @@ export async function overview(
   context: AuthContext,
 ): Promise<MembershipOverview> {
   const supabase = await createClient();
-  const [plans, memberships, payments, customers] = await Promise.all([
+  const [plans, memberships, customers] = await Promise.all([
     collectById<Plan>((after) => {
       let query = supabase
         .from("membership_plans")
@@ -73,13 +72,6 @@ export async function overview(
       if (after) query = query.gt("id", after);
       return query;
     }, "Não foi possível carregar todas as assinaturas."),
-    supabase
-      .from("membership_payments")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .order("paid_at", { ascending: false })
-      .order("id")
-      .limit(50),
     collectById<MembershipOverview["customers"][number]>((after) => {
       let query = supabase
         .from("customers")
@@ -91,8 +83,6 @@ export async function overview(
       return query;
     }, "Não foi possível carregar os nomes dos clientes."),
   ]);
-  if (payments.error)
-    throw new Error("Não foi possível carregar os pagamentos recentes.");
   const usage: Database["public"]["Views"]["membership_class_usage"]["Row"][] =
     [];
   for (let offset = 0; offset < memberships.length; offset += 100) {
@@ -132,7 +122,6 @@ export async function overview(
       (a, b) =>
         a.next_due_on.localeCompare(b.next_due_on) || a.id.localeCompare(b.id),
     ),
-    payments: payments.data ?? [],
     customers: customers.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     usage: usageItems,
   };
@@ -195,4 +184,37 @@ export async function pay(id: string, method: MembershipMethod) {
   });
   checkRpc(error, "Não foi possível registrar a mensalidade.");
   return data;
+}
+
+export type MembershipPaymentsPage = {
+  items: MembershipPayment[];
+  count: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function listMembershipPayments(
+  context: AuthContext,
+  options: ReturnType<typeof parsePaymentSearch>,
+): Promise<MembershipPaymentsPage> {
+  const supabase = await createClient();
+  const pageSize = 25;
+  let query = supabase
+    .from("membership_payments")
+    .select("*", { count: "exact" })
+    .eq("tenant_id", context.tenantId);
+  if (options.membershipId)
+    query = query.eq("membership_id", options.membershipId);
+  const result = await query
+    .order("paid_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range((options.page - 1) * pageSize, options.page * pageSize - 1);
+  if (result.error)
+    throw new Error("Não foi possível carregar o histórico de pagamentos.");
+  return {
+    items: result.data,
+    count: result.count ?? 0,
+    page: options.page,
+    pageSize,
+  };
 }

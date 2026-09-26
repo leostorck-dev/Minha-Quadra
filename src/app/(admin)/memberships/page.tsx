@@ -8,6 +8,7 @@ export default async function MembershipsPage() {
   const timezone = await getArenaTimezone(context);
   return (
     <MembershipsView
+      timezone={timezone}
       today={Temporal.Now.zonedDateTimeISO(timezone).toPlainDate().toString()}
     />
   );

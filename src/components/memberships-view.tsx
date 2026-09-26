@@ -6,6 +6,7 @@ import type {
   Membership,
   Plan,
 } from "@/features/memberships/service";
+import { MembershipPaymentHistory } from "@/components/membership-payment-history";
 import { saveAndRefresh } from "@/features/memberships/mutations";
 import type { MembershipMethod } from "@/features/memberships/validation";
 
@@ -39,7 +40,14 @@ async function api(path: string, method = "GET", payload?: unknown) {
   return body;
 }
 
-export function MembershipsView({ today }: { today: string }) {
+export function MembershipsView({
+  today,
+  timezone,
+}: {
+  today: string;
+  timezone: string;
+}) {
+  const [revision, setRevision] = useState(0);
   const [data, setData] = useState<MembershipOverview | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -57,6 +65,7 @@ export function MembershipsView({ today }: { today: string }) {
   async function load() {
     setData(await api("/api/memberships"));
     setRefreshRequired(false);
+    setRevision((value) => value + 1);
   }
   useEffect(() => {
     let active = true;
@@ -146,9 +155,6 @@ export function MembershipsView({ today }: { today: string }) {
     data?.customers.map((item) => [item.id, item.name]),
   );
   const byPlan = new Map(data?.plans.map((item) => [item.id, item.name]));
-  const byMembership = new Map(
-    data?.memberships.map((item) => [item.id, item]),
-  );
   const eligible =
     data?.customers.filter(
       (item) =>
@@ -512,37 +518,11 @@ export function MembershipsView({ today }: { today: string }) {
               )}
             </ul>
           </section>
-          <section className="rounded-xl border border-white/10 bg-slate-900 p-5">
-            <h2 className="text-xl font-bold">Pagamentos recentes</h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Últimos 50 pagamentos registrados. Consulte o Financeiro para
-              períodos anteriores.
-            </p>
-            <ul className="mt-4">
-              {data.payments.length ? (
-                data.payments.map((payment) => (
-                  <li
-                    key={payment.id}
-                    className="flex flex-wrap justify-between gap-2 border-t border-white/10 py-3 text-sm"
-                  >
-                    <span>
-                      {byCustomer.get(
-                        byMembership.get(payment.membership_id)?.customer_id ??
-                          "",
-                      ) ?? "Cliente indisponível"}{" "}
-                      · {date(payment.period_due_on)} ·{" "}
-                      {methods[payment.method as MembershipMethod]}
-                    </span>
-                    <strong>{money.format(payment.amount)}</strong>
-                  </li>
-                ))
-              ) : (
-                <li className="text-sm text-slate-400">
-                  Nenhum pagamento registrado.
-                </li>
-              )}
-            </ul>
-          </section>
+          <MembershipPaymentHistory
+            overview={data}
+            timezone={timezone}
+            revision={revision}
+          />
         </>
       )}
     </div>

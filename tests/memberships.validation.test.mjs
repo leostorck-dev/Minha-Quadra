@@ -1,3 +1,4 @@
+import { parsePaymentSearch } from "../src/features/memberships/validation.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -53,4 +54,21 @@ test("meio de pagamento é restrito", () => {
   assert.equal(parseMethod({ method: "pix" }), "pix");
   assert.throws(() => parseMethod({ method: "boleto" }));
   assert.throws(() => parseMethod({ method: "pix", amount: 1 }));
+});
+
+test("histórico de mensalidades valida paginação e assinatura", () => {
+  assert.deepEqual(parsePaymentSearch(new URLSearchParams()), {
+    page: 1,
+    membershipId: null,
+  });
+  const membershipId = "a1111111-aaaa-4111-8111-111111111119";
+  assert.deepEqual(
+    parsePaymentSearch(new URLSearchParams({ page: "3", membershipId })),
+    { page: 3, membershipId },
+  );
+  for (const page of ["0", "", "-1", "1.5", "NaN", "10001"])
+    assert.throws(() => parsePaymentSearch(new URLSearchParams({ page })));
+  assert.throws(() =>
+    parsePaymentSearch(new URLSearchParams({ membershipId: "invalid" })),
+  );
 });
