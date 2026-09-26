@@ -1,9 +1,9 @@
 import { requireRole } from "@/lib/auth/context";
 import { apiError, privateJson } from "@/lib/api/errors";
 import { createClass, overview } from "@/features/classes/service";
-import { parseClass } from "@/features/classes/validation";
+import { parseClass, parseClassSearch } from "@/features/classes/validation";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const context = await requireRole([
       "OWNER",
@@ -11,7 +11,12 @@ export async function GET() {
       "RECEPTIONIST",
       "COACH",
     ]);
-    return privateJson(await overview(context));
+    return privateJson(
+      await overview(
+        context,
+        parseClassSearch(new URL(request.url).searchParams),
+      ),
+    );
   } catch (error) {
     return apiError(error);
   }

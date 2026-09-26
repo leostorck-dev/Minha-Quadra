@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   parseClass,
+  parseClassSearch,
   parseClassChange,
   parseCoach,
 } from "../src/features/classes/validation.ts";
@@ -69,4 +70,32 @@ test("professor valida comissão e especialidades", () => {
   assert.throws(() =>
     parseCoach({ ...valid, specialties: ["Futevôlei", "futevôlei"] }),
   );
+});
+
+test("consulta de aulas valida páginas, situação e professor", () => {
+  assert.deepEqual(parseClassSearch(new URLSearchParams()), {
+    page: 1,
+    status: "all",
+    coachId: null,
+  });
+  assert.deepEqual(
+    parseClassSearch(
+      new URLSearchParams({
+        page: "21",
+        status: "scheduled",
+        coachId: ids.coachId,
+      }),
+    ),
+    { page: 21, status: "scheduled", coachId: ids.coachId },
+  );
+  for (const params of [
+    { page: "0" },
+    { page: "1.5" },
+    { page: "10001" },
+    { page: "abc" },
+    { status: "unknown" },
+    { coachId: "invalid" },
+  ]) {
+    assert.throws(() => parseClassSearch(new URLSearchParams(params)));
+  }
 });

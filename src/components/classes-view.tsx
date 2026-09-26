@@ -1,7 +1,7 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Role } from "@/lib/auth/context";
 import type {
   ClassOverview,
@@ -300,16 +300,43 @@ export function ClassesView({
   const [price, setPrice] = useState("0");
   const [customerIds, setCustomerIds] = useState<string[]>([]);
   const [coachFilter, setCoachFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [loadedUrl, setLoadedUrl] = useState("");
+  const [failedUrl, setFailedUrl] = useState("");
+  const [retry, setRetry] = useState(0);
+  const url =
+    "/api/classes?" +
+    new URLSearchParams({
+      page: String(page),
+      status: statusFilter,
+      ...(coachFilter ? { coachId: coachFilter } : {}),
+    });
+  const currentUrl = useRef(url);
+  const loading = loadedUrl !== url && failedUrl !== url;
 
   useEffect(() => {
-    void api("/api/classes")
-      .then(setData)
-      .catch((cause) =>
+    let active = true;
+    currentUrl.current = url;
+    void api(url)
+      .then((body: ClassOverview) => {
+        if (!active) return;
+        setData(body);
+        setLoadedUrl(url);
+        setFailedUrl("");
+        setError("");
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setFailedUrl(url);
         setError(
           cause instanceof Error ? cause.message : "Falha ao carregar aulas.",
-        ),
-      );
-  }, []);
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [url, retry]);
   useEffect(() => {
     const timer = window.setInterval(() => setNowEpoch(Date.now()), 60_000);
     return () => window.clearInterval(timer);
@@ -321,7 +348,12 @@ export function ClassesView({
     setNotice("");
     try {
       await action();
-      setData(await api("/api/classes"));
+      const refreshed = await api(url);
+      if (currentUrl.current === url) {
+        setData(refreshed);
+        setLoadedUrl(url);
+        setFailedUrl("");
+      }
       setNotice(message);
       return true;
     } catch (cause) {
@@ -388,25 +420,16 @@ export function ClassesView({
         }),
       "Aula agendada; a quadra foi bloqueada.",
     );
-    if (saved) setCustomerIds([]);
+    if (saved) {
+      setCustomerIds([]);
+      setPage(1);
+      setStatusFilter("all");
+      setCoachFilter("");
+    }
   }
 
-  const sorted = useMemo(
-    () =>
-      data?.classes.slice().sort((a, b) => {
-        const ar =
-          data.reservations.find((row) => row.id === a.reservation_id)
-            ?.start_at ?? "";
-        const br =
-          data.reservations.find((row) => row.id === b.reservation_id)
-            ?.start_at ?? "";
-        return br.localeCompare(ar);
-      }) ?? [],
-    [data],
-  );
-  const shown = coachFilter
-    ? sorted.filter((item) => item.coach_id === coachFilter)
-    : sorted;
+  const sorted = loading || failedUrl === url ? [] : (data?.classes ?? []);
+  const shown = sorted;
   const completed = sorted.filter((item) => item.status === "completed");
   const revenue = completed.reduce((sum, item) => sum + item.price, 0);
   const commissions = completed.reduce(
@@ -459,10 +482,29 @@ export function ClassesView({
           {notice}
         </p>
       )}
+      {failedUrl === url && (
+        <button
+          type="button"
+          className="rounded-lg border border-white/20 px-4 py-2"
+          onClick={() => {
+            setFailedUrl("");
+            setRetry((value) => value + 1);
+          }}
+        >
+          Tentar carregar novamente
+        </button>
+      )}
       {!data ? (
-        <p className="text-slate-400">Carregando…</p>
+        <p className="text-slate-400">
+          {failedUrl === url
+            ? "Não foi possível carregar as aulas."
+            : "Carregando…"}
+        </p>
       ) : (
         <>
+          <p className="text-sm text-slate-400">
+            Indicadores das aulas na página selecionada.
+          </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               [
@@ -760,10 +802,29 @@ export function ClassesView({
           <section>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-bold">Agenda e histórico de aulas</h2>
+              <select
+                aria-label="Filtrar situação da aula"
+                value={statusFilter}
+                disabled={busy}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value);
+                  setPage(1);
+                }}
+                className="rounded-lg border border-white/20 bg-slate-800 p-2"
+              >
+                <option value="all">Todas as situações</option>
+                <option value="scheduled">Agendadas</option>
+                <option value="completed">Concluídas</option>
+                <option value="cancelled">Canceladas</option>
+              </select>
               {role !== "COACH" && (
                 <select
                   value={coachFilter}
-                  onChange={(e) => setCoachFilter(e.target.value)}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setCoachFilter(e.target.value);
+                    setPage(1);
+                  }}
                   aria-label="Filtrar por professor"
                   className="rounded-lg border border-white/20 bg-slate-800 p-2"
                 >
@@ -776,6 +837,15 @@ export function ClassesView({
                 </select>
               )}
             </div>
+            <p className="mb-3 text-sm text-slate-400">
+              {data.count} aulas no filtro · 25 cadastros por página, mais
+              recentes primeiro.
+            </p>
+            {loading && (
+              <p role="status" className="mb-3 text-sm">
+                Carregando aulas…
+              </p>
+            )}
             <ul className="grid gap-4">
               {shown.length ? (
                 shown.map((item) => (
@@ -791,9 +861,37 @@ export function ClassesView({
                   />
                 ))
               ) : (
-                <li className="text-slate-400">Nenhuma aula encontrada.</li>
+                <li className="text-slate-400">
+                  {loading
+                    ? "Aguarde o carregamento."
+                    : failedUrl === url
+                      ? "Não foi possível carregar esta página."
+                      : "Nenhuma aula encontrada."}
+                </li>
               )}
             </ul>
+            <div className="mt-5 flex items-center justify-between gap-3 text-sm">
+              <button
+                type="button"
+                disabled={busy || loading || page <= 1}
+                onClick={() => setPage(page - 1)}
+                className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <span>
+                Página {page} de{" "}
+                {Math.max(1, Math.ceil(data.count / data.pageSize))}
+              </span>
+              <button
+                type="button"
+                disabled={busy || loading || page * data.pageSize >= data.count}
+                onClick={() => setPage(page + 1)}
+                className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-40"
+              >
+                Próxima
+              </button>
+            </div>
           </section>
         </>
       )}

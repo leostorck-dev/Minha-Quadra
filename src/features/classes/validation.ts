@@ -4,10 +4,23 @@ export const CLASS_KINDS = ["individual", "duo", "group", "trial"] as const;
 export type ClassKind = (typeof CLASS_KINDS)[number];
 export type CommissionType = "percentage" | "fixed";
 
+export function parseClassSearch(params: URLSearchParams) {
+  const page = Number(params.get("page") ?? "1");
+  const status = params.get("status") ?? "all";
+  const coachId = params.get("coachId");
+  if (!Number.isInteger(page) || page < 1 || page > 10000)
+    throw new ValidationError("Página inválida.");
+  if (!["all", "scheduled", "completed", "cancelled"].includes(status))
+    throw new ValidationError("Situação da aula inválida.");
+  return { page, status, coachId: coachId ? uuid(coachId) : null };
+}
+
 export function uuid(value: unknown): string {
   if (
     typeof value !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    )
   ) {
     throw new ValidationError("Identificador inválido.");
   }

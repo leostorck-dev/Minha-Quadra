@@ -79,4 +79,43 @@ begin
   if (select status from public.class_sessions where id = v_class.id) <> 'completed'
     then raise exception 'Aula não concluída'; end if;
 end; $$;
+-- Regression: more than 1,000 enrollments must not truncate a class roster.
+select set_config('request.jwt.claim.sub','a1111111-aaaa-4111-8111-111111111113',true);
+select set_config('request.jwt.claims','{"sub":"a1111111-aaaa-4111-8111-111111111113","role":"authenticated"}',true);
+do $$
+declare
+  v_students uuid[];
+  v_coach uuid;
+  v_class public.class_sessions;
+  v_ids uuid[];
+  v_start timestamptz;
+  v_count integer;
+begin
+  insert into public.customers (tenant_id,name,phone,created_by)
+  select 'a2222222-aaaa-4222-8222-222222222223', 'Aluno volume ' || n, '1198888' || lpad(n::text,4,'0'),
+    'a1111111-aaaa-4111-8111-111111111113' from generate_series(1,12) n;
+  select array_agg(id order by id) into v_students from public.customers where name like 'Aluno volume %';
+  select id into v_coach from public.coaches where profile_id = 'b1111111-bbbb-4111-8111-111111111113';
+  for i in 1..90 loop
+    v_start := ((current_date + i) + time '10:00') at time zone 'America/Sao_Paulo';
+    v_class := public.create_class(v_coach,'a3333333-aaaa-4333-8333-333333333333','group',
+      v_start,v_start + interval '1 hour',120,v_students);
+  end loop;
+  if (select count(*) from public.class_students) <= 1000 then raise exception 'Fixture insuficiente'; end if;
+  select array_agg(id) into v_ids from (
+    select id from public.class_sessions where status = 'scheduled' and coach_id = v_coach
+    order by created_at desc, id limit 25 offset 25
+  ) page;
+  if cardinality(v_ids) <> 25 then raise exception 'Segunda página incompleta'; end if;
+  select count(*) into v_count from public.class_students where class_id = any(v_ids);
+  if v_count <> 300 then raise exception 'Alunos omitidos na segunda página: %',v_count; end if;
+  perform set_config('request.jwt.claim.sub','b1111111-bbbb-4111-8111-111111111113',true);
+  perform set_config('request.jwt.claims','{"sub":"b1111111-bbbb-4111-8111-111111111113","role":"authenticated"}',true);
+  if (select count(*) from public.class_students where class_id = any(v_ids)) <> 300
+    then raise exception 'Professor não vê chamada completa'; end if;
+  perform set_config('request.jwt.claim.sub','c1111111-cccc-4111-8111-111111111113',true);
+  perform set_config('request.jwt.claims','{"sub":"c1111111-cccc-4111-8111-111111111113","role":"authenticated"}',true);
+  if (select count(*) from public.class_students where class_id = any(v_ids)) <> 0
+    then raise exception 'Outra arena vê chamada'; end if;
+end; $$;
 rollback;

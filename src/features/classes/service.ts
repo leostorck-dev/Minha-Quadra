@@ -1,3 +1,5 @@
+import { collectById } from "@/lib/database/pagination";
+import type { parseClassSearch } from "./validation";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
@@ -11,6 +13,9 @@ export type ClassSession =
 export type ClassStudent =
   Database["public"]["Tables"]["class_students"]["Row"];
 export type ClassOverview = {
+  count: number;
+  page: number;
+  pageSize: number;
   coaches: Coach[];
   classes: ClassSession[];
   students: ClassStudent[];
@@ -47,49 +52,58 @@ function check(
   throw new Error(fallback);
 }
 
-export async function overview(context: AuthContext): Promise<ClassOverview> {
+export async function overview(
+  context: AuthContext,
+  options: ReturnType<typeof parseClassSearch>,
+): Promise<ClassOverview> {
   const supabase = await createClient();
-  const [coaches, classes, students, customers, courts, profiles] =
-    await Promise.all([
-      supabase
-        .from("coaches")
-        .select("*")
-        .eq("tenant_id", context.tenantId)
-        .order("name"),
-      supabase
-        .from("class_sessions")
-        .select("*")
-        .eq("tenant_id", context.tenantId)
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("class_students")
-        .select("*")
-        .eq("tenant_id", context.tenantId)
-        .limit(1000),
-      supabase
+  const pageSize = 25;
+  let classQuery = supabase
+    .from("class_sessions")
+    .select("*", { count: "exact" })
+    .eq("tenant_id", context.tenantId);
+  if (options.status !== "all")
+    classQuery = classQuery.eq("status", options.status);
+  if (options.coachId) classQuery = classQuery.eq("coach_id", options.coachId);
+  const [coaches, classes, customers, courts, profiles] = await Promise.all([
+    supabase
+      .from("coaches")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .order("name"),
+    classQuery
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range((options.page - 1) * pageSize, options.page * pageSize - 1),
+    collectById<ClassOverview["customers"][number]>((after) => {
+      let query = supabase
         .from("customers")
         .select("id, name, status")
         .eq("tenant_id", context.tenantId)
-        .order("name")
-        .limit(500),
-      supabase
-        .from("courts")
-        .select("id, name, status")
-        .eq("tenant_id", context.tenantId)
-        .order("name"),
-      context.role === "OWNER"
-        ? supabase
-            .from("profiles")
-            .select("id, name")
-            .eq("tenant_id", context.tenantId)
-            .eq("role", "COACH")
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+        .order("id")
+        .limit(200);
+      if (after) query = query.gt("id", after);
+      return query;
+    }, "Não foi possível carregar os alunos.").then((data) => ({
+      data: data.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+      error: null,
+    })),
+    supabase
+      .from("courts")
+      .select("id, name, status")
+      .eq("tenant_id", context.tenantId)
+      .order("name"),
+    context.role === "OWNER"
+      ? supabase
+          .from("profiles")
+          .select("id, name")
+          .eq("tenant_id", context.tenantId)
+          .eq("role", "COACH")
+      : Promise.resolve({ data: [], error: null }),
+  ]);
   if (
     coaches.error ||
     classes.error ||
-    students.error ||
     customers.error ||
     courts.error ||
     profiles.error
@@ -99,11 +113,12 @@ export async function overview(context: AuthContext): Promise<ClassOverview> {
     (item) => item.reservation_id,
   );
   const classIds = (classes.data ?? []).map((item) => item.id);
-  const [reservations, payments, payouts] = await Promise.all([
+  const [reservations, payments, payouts, students] = await Promise.all([
     reservationIds.length
       ? supabase
           .from("reservations")
           .select("id, start_at, end_at, status")
+          .eq("tenant_id", context.tenantId)
           .in("id", reservationIds)
       : Promise.resolve({ data: [], error: null }),
     context.role !== "COACH" && classIds.length
@@ -120,10 +135,22 @@ export async function overview(context: AuthContext): Promise<ClassOverview> {
           .eq("tenant_id", context.tenantId)
           .in("class_id", classIds)
       : Promise.resolve({ data: [], error: null }),
+    classIds.length
+      ? supabase
+          .from("class_students")
+          .select("*")
+          .eq("tenant_id", context.tenantId)
+          .in("class_id", classIds)
+          .order("class_id")
+          .order("customer_id")
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  if (reservations.error || payments.error || payouts.error)
+  if (reservations.error || payments.error || payouts.error || students.error)
     throw new Error("Não foi possível carregar os horários das aulas.");
   return {
+    count: classes.count ?? 0,
+    page: options.page,
+    pageSize,
     coaches: coaches.data ?? [],
     classes: classes.data ?? [],
     students: students.data ?? [],
