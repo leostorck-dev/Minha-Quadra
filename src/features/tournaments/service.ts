@@ -218,7 +218,7 @@ export async function getDraw(
         .eq("tournament_id", tournamentId)
         .order("round")
         .order("position")
-        .limit(378),
+        .limit(384),
       supabase
         .from("tournament_tiebreaks")
         .select("*")
@@ -344,6 +344,16 @@ export async function resolveTie(
     p_reason: input.reason,
   });
   check(error, "Não foi possível registrar o desempate.");
+  return data;
+}
+
+export async function createBronze(tournamentId: string, categoryId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_tournament_bronze", {
+    p_tournament_id: tournamentId,
+    p_category_id: categoryId,
+  });
+  check(error, "Não foi possível criar a disputa de terceiro lugar.");
   return data;
 }
 

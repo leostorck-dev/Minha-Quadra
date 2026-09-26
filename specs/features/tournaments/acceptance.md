@@ -9,6 +9,14 @@
 - Professor e outra arena não veem nem alteram torneios privados.
 # Grupos e confrontos
 
+## Terceiro lugar e pódio
+
+- Criar bronze requer duas semifinais concluídas com placar; não permite duplicata, categoria só com final ou semifinal com avanço sem adversário.
+- Perdedoras das semifinais disputam bronze; vencedora e perdedora da final ocupam primeiro e segundo lugares.
+- Corrigir semifinal atualiza participantes pendentes; final ou bronze concluídos bloqueiam a correção. Anular remove colocação e preserva histórico.
+- Recepção e outra arena não criam a disputa. Outra arena não consulta.
+- `tests/tournament-podium.database.sql` cobre categorias com 2, 3 e 4 classificadas e o ciclo de correções/anulações. O teste de pódio em `tests/tournaments.results.test.mjs` confirma a separação entre final e bronze.
+
 ## Desempate manual
 
 - Gestor ordena duplas empatadas e justifica; a classificação muda sem alterar estatísticas e a chave recebe as classificadas corretas.

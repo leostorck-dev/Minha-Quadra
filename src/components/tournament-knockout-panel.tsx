@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { TournamentDraw } from "@/features/tournaments/service";
 import { TournamentMatchResult } from "@/components/tournament-match-result";
+import { categoryPodium } from "@/features/tournaments/podium";
 
 export function TournamentKnockoutPanel({
   data,
@@ -25,7 +26,15 @@ export function TournamentKnockoutPanel({
     (a, b) => a - b,
   );
   const lastRound = rounds.at(-1);
-  const final = matches.find((m) => m.round === lastRound);
+  const bronze = matches.find((m) => m.stage === "bronze");
+  const semifinals = matches.filter(
+    (m) => m.stage === "bracket" && m.round === (lastRound ?? 0) - 1,
+  );
+  const canCreateBronze =
+    !bronze &&
+    semifinals.length === 2 &&
+    semifinals.every((m) => m.score_a !== null);
+  const podium = categoryPodium(matches);
   const label = (id: string | null) =>
     data.entries.find((e) => e.team_id === id)?.team_label ??
     "Aguardando vencedor";
@@ -54,6 +63,34 @@ export function TournamentKnockoutPanel({
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Falha ao gerar a chave.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function generateBronze() {
+    if (
+      !window.confirm(
+        "Criar a disputa de terceiro lugar entre as perdedoras das semifinais?",
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/tournaments/${tournamentId}/categories/${categoryId}/bronze`,
+        { method: "POST" },
+      );
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(
+          body.error?.message ?? "Falha ao criar disputa de terceiro lugar.",
+        );
+      await onSaved();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Falha ao criar disputa.",
       );
     } finally {
       setBusy(false);
@@ -117,13 +154,44 @@ export function TournamentKnockoutPanel({
           resultados das rodadas seguintes.
         </p>
       )}
-      {final?.winner_id && (
-        <p
-          role="status"
-          className="mt-4 rounded bg-lime-400/10 p-3 font-bold text-lime-300"
-        >
-          Campeã da categoria: {label(final.winner_id)}
-        </p>
+      {bracket && (
+        <div className="mt-4 rounded bg-lime-400/10 p-4">
+          <h6 className="font-semibold text-lime-300">Pódio da categoria</h6>
+          <ol className="mt-2 space-y-2 text-sm">
+            <li>
+              <strong>1º · Campeã:</strong>{" "}
+              {podium.champion ? label(podium.champion) : "Aguardando a final"}
+            </li>
+            <li>
+              <strong>2º · Vice:</strong>{" "}
+              {podium.runnerUp ? label(podium.runnerUp) : "Aguardando a final"}
+            </li>
+            <li>
+              <strong>3º lugar:</strong>{" "}
+              {podium.third
+                ? label(podium.third)
+                : bronze
+                  ? "Disputa pendente"
+                  : "Disputa não criada"}
+            </li>
+          </ol>
+          {!bronze && (
+            <p className="mt-3 text-xs text-slate-400">
+              O terceiro lugar é opcional e exige duas semifinais disputadas com
+              placar.
+            </p>
+          )}
+          {canManage && canCreateBronze && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void generateBronze()}
+              className="mt-3 rounded border border-lime-400/40 px-3 py-2 text-sm text-lime-300 disabled:opacity-50"
+            >
+              Criar disputa de terceiro lugar
+            </button>
+          )}
+        </div>
       )}
       <div className="mt-4 flex gap-4 overflow-x-auto pb-3">
         {rounds.map((round) => (
@@ -133,7 +201,9 @@ export function TournamentKnockoutPanel({
           >
             <h6 className="font-semibold">
               {round === lastRound
-                ? "Final"
+                ? bronze
+                  ? "Final e terceiro lugar"
+                  : "Final"
                 : round === (lastRound ?? 0) - 1
                   ? "Semifinal"
                   : `Rodada ${round}`}
@@ -147,7 +217,9 @@ export function TournamentKnockoutPanel({
                     className="rounded border border-white/10 p-3 text-sm"
                   >
                     <p className="mb-2 text-xs text-slate-400">
-                      Jogo {m.position}
+                      {m.stage === "bronze"
+                        ? "Disputa de terceiro lugar"
+                        : `Jogo ${m.position}`}
                     </p>
                     {m.round === 1 && m.winner_id && m.team_b_id === null ? (
                       <p>

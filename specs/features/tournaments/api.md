@@ -9,6 +9,12 @@
 Respostas de erro seguem `{error: {code, message}}`. O navegador não envia `tenant_id`.
 # Sorteio
 
+## Terceiro lugar
+
+- `POST /api/tournaments/:id/categories/:categoryId/bronze`: proprietário/gerente cria a disputa entre as perdedoras das semifinais. Não recebe corpo. Retorna 201 com o confronto.
+- 409 se a disputa já existe ou não existem duas semifinais concluídas com placar; 404 para categoria inexistente/de outra arena; 403 para papel proibido.
+- A disputa usa os mesmos endpoints de resultado e histórico das eliminatórias. `stage` distingue `bracket` e `bronze` nos confrontos.
+
 ## Desempates
 
 - `POST /api/tournaments/:id/groups/:groupId/tiebreak`: gestores enviam `{ "teamIds": ["uuid", "uuid"], "expectedVersion": 3, "reason": "Critério aplicado conforme regulamento" }`. A lista contém todas as duplas do grupo na ordem desejada. Retorna 201 com a decisão.

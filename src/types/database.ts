@@ -1252,6 +1252,7 @@ export type Database = {
           round: number
           score_a: number | null
           score_b: number | null
+          stage: string
           team_a_id: string | null
           team_b_id: string | null
           tenant_id: string
@@ -1266,6 +1267,7 @@ export type Database = {
           round: number
           score_a?: number | null
           score_b?: number | null
+          stage?: string
           team_a_id?: string | null
           team_b_id?: string | null
           tenant_id: string
@@ -1280,6 +1282,7 @@ export type Database = {
           round?: number
           score_a?: number | null
           score_b?: number | null
+          stage?: string
           team_a_id?: string | null
           team_b_id?: string | null
           tenant_id?: string
@@ -2046,6 +2049,30 @@ export type Database = {
         }
         Returns: number
       }
+      create_tournament_bronze: {
+        Args: { p_category_id: string; p_tournament_id: string }
+        Returns: {
+          category_id: string
+          id: string
+          position: number
+          result_version: number
+          round: number
+          score_a: number | null
+          score_b: number | null
+          stage: string
+          team_a_id: string | null
+          team_b_id: string | null
+          tenant_id: string
+          tournament_id: string
+          winner_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournament_knockout_matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       dashboard_overview: { Args: never; Returns: Json }
       draw_tournament_category: {
         Args: {
@@ -2196,6 +2223,7 @@ export type Database = {
           round: number
           score_a: number | null
           score_b: number | null
+          stage: string
           team_a_id: string | null
           team_b_id: string | null
           tenant_id: string

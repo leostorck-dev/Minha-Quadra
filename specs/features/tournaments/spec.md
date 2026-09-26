@@ -30,4 +30,10 @@ Proprietário ou gerente pode definir uma ordem entre duplas empatadas após con
 
 O histórico preserva ordem, motivo, autor, data e versão. Revisar uma decisão marca a anterior como substituída. Qualquer correção ou anulação de placar do grupo invalida automaticamente a decisão vigente, exigindo revisão. A versão do grupo impede que uma tela antiga sobrescreva mudanças recentes. A geração da eliminatória bloqueia novas decisões. Recepção consulta decisões e histórico, sem permissão para decidir.
 
-Horários dos jogos, regulamentos específicos e disputa de terceiro lugar ficam para etapas posteriores.
+## Terceiro lugar e pódio
+
+Após concluir duas semifinais com placar, o gestor pode criar uma disputa opcional de terceiro lugar entre as perdedoras. Semifinais com avanço sem adversário não produzem uma perdedora e não permitem essa disputa. Cada categoria tem no máximo um jogo de terceiro lugar.
+
+O pódio mostra campeã e vice após a final e terceira colocada após o jogo de terceiro lugar. Não há atribuição automática de terceiro lugar sem partida. Correções e anulações preservam histórico e atualizam o pódio. Para alterar uma semifinal, os resultados da final e do terceiro lugar precisam estar pendentes; seus participantes serão recalculados. A recepção consulta o pódio, enquanto gestores criam a disputa e registram os resultados.
+
+Horários dos jogos e regulamentos específicos ficam para etapas posteriores.

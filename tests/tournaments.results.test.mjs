@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { groupStandings } from "../src/features/tournaments/standings.ts";
+import { categoryPodium } from "../src/features/tournaments/podium.ts";
 import {
   parseResult,
   parseTiebreak,
@@ -9,6 +10,45 @@ const entries = ["a", "b", "c"].map((team_id) => ({
   team_id,
   team_label: team_id,
 }));
+
+test("pódio separa final e bronze e remove colocação após anulação", () => {
+  const final = {
+    round: 2,
+    position: 1,
+    stage: "bracket",
+    team_a_id: "a",
+    team_b_id: "b",
+    winner_id: "b",
+    score_a: 4,
+  };
+  const bronze = {
+    round: 2,
+    position: 2,
+    stage: "bronze",
+    team_a_id: "c",
+    team_b_id: "d",
+    winner_id: "c",
+    score_a: 6,
+  };
+  assert.deepEqual(categoryPodium([bronze, final]), {
+    champion: "b",
+    runnerUp: "a",
+    third: "c",
+  });
+  assert.deepEqual(
+    categoryPodium([final, { ...bronze, score_a: null, winner_id: null }]),
+    { champion: "b", runnerUp: "a", third: null },
+  );
+  assert.deepEqual(
+    categoryPodium([{ ...final, score_a: null, winner_id: null }, bronze]),
+    { champion: null, runnerUp: null, third: "c" },
+  );
+  assert.deepEqual(categoryPodium([]), {
+    champion: null,
+    runnerUp: null,
+    third: null,
+  });
+});
 const match = (a, b, score_a, score_b) => ({
   team_a_id: a,
   team_b_id: b,

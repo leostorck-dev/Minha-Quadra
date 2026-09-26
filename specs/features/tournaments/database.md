@@ -1,5 +1,7 @@
 # Banco
 
+`tournament_knockout_matches.stage` identifica a chave principal (`bracket`) ou terceiro lugar (`bronze`), com índice parcial que permite apenas um bronze por categoria. A disputa ocupa a posição 2 da rodada final, e seus participantes são as perdedoras das semifinais. A atualização de vencedores/perdedoras ocorre sob o mesmo bloqueio da categoria. Resultados do bronze impedem alterar semifinais até serem anulados. RLS, grants e histórico de resultados existentes também se aplicam ao bronze.
+
 `tournament_tiebreaks` guarda decisões com lista ordenada de duplas, justificativa, autor, versão e situação (`active`, `superseded`, `results_changed`). Índice parcial limita uma decisão vigente por grupo; RLS permite apenas leitura à equipe da arena. A RPC valida a lista completa sem duplicação e preserva a ordem dos critérios automáticos. Categoria e grupo são bloqueados na transação, com conferência de `standings_version`.
 
 O trigger de atualização dos placares incrementa a versão do grupo e invalida sua decisão vigente. `tournament_qualification`, com `security_invoker=true`, combina a classificação automática e a decisão vigente para gerar as eliminatórias. Nenhum placar é modificado pelo desempate.
