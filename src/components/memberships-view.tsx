@@ -6,6 +6,7 @@ import type {
   Membership,
   Plan,
 } from "@/features/memberships/service";
+import { saveAndRefresh } from "@/features/memberships/mutations";
 import type { MembershipMethod } from "@/features/memberships/validation";
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -43,6 +44,7 @@ export function MembershipsView({ today }: { today: string }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [refreshRequired, setRefreshRequired] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [classes, setClasses] = useState("");
@@ -54,23 +56,51 @@ export function MembershipsView({ today }: { today: string }) {
 
   async function load() {
     setData(await api("/api/memberships"));
+    setRefreshRequired(false);
   }
   useEffect(() => {
+    let active = true;
     void api("/api/memberships")
-      .then((result) => setData(result))
-      .catch((cause) =>
-        setError(cause instanceof Error ? cause.message : "Falha ao carregar."),
-      );
+      .then((result) => {
+        if (active) setData(result);
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setRefreshRequired(true);
+        setError(cause instanceof Error ? cause.message : "Falha ao carregar.");
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
+  async function retryLoad() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao carregar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function run(action: () => Promise<unknown>, success: string) {
+    if (busy || refreshRequired) return false;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await action();
-      await load();
+      const result = await saveAndRefresh(action, load);
       setNotice(success);
+      if (!result.refreshed) {
+        setRefreshRequired(true);
+        setError(
+          "A operação foi concluída, mas os dados da tela não foram atualizados. Recarregue antes de registrar outra alteração.",
+        );
+      }
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Falha na operação.");
@@ -150,7 +180,7 @@ export function MembershipsView({ today }: { today: string }) {
           </p>
         </div>
         <button
-          disabled={busy}
+          disabled={busy || refreshRequired}
           onClick={() =>
             void run(
               () =>
@@ -219,7 +249,7 @@ export function MembershipsView({ today }: { today: string }) {
           <div className="flex gap-2">
             {isDue && (
               <button
-                disabled={busy}
+                disabled={busy || refreshRequired}
                 onClick={() =>
                   void run(
                     () =>
@@ -235,7 +265,7 @@ export function MembershipsView({ today }: { today: string }) {
               </button>
             )}
             <button
-              disabled={busy}
+              disabled={busy || refreshRequired}
               onClick={() => {
                 if (
                   window.confirm(
@@ -287,8 +317,22 @@ export function MembershipsView({ today }: { today: string }) {
           {notice}
         </p>
       )}
+      {refreshRequired && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void retryLoad()}
+          className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-50"
+        >
+          {busy ? "Atualizando…" : "Recarregar dados"}
+        </button>
+      )}
       {!data ? (
-        <p className="text-slate-400">Carregando…</p>
+        <p className="text-slate-400">
+          {refreshRequired
+            ? "Aguardando atualização dos dados."
+            : "Carregando…"}
+        </p>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -344,7 +388,7 @@ export function MembershipsView({ today }: { today: string }) {
                   className="rounded-lg border border-white/20 bg-slate-800 p-3"
                 />
                 <button
-                  disabled={busy}
+                  disabled={busy || refreshRequired}
                   className="rounded-lg bg-lime-400 p-3 font-semibold text-slate-950 disabled:opacity-50"
                 >
                   Criar plano
@@ -427,6 +471,7 @@ export function MembershipsView({ today }: { today: string }) {
                 <button
                   disabled={
                     busy ||
+                    refreshRequired ||
                     !eligible.length ||
                     !data.plans.some((item) => item.active)
                   }

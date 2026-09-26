@@ -14,3 +14,5 @@
 - Inativar cliente não substitui seu nome por uma descrição genérica no histórico e não permite nova adesão.
 - Planos e assinaturas são lidos em lotes com cursor; consumo é consultado por lotes de identificadores sem corte global. Falha em qualquer lote deve abortar a resposta completa.
 - `tests/memberships.database.sql` confirma histórico após inativação, bloqueio de nova adesão e criação/consumo para o cliente 501, além das verificações de pagamento e isolamento entre arenas. Toda a massa é revertida.
+
+- Uma mutação confirmada continua indicada como concluída quando apenas a atualização da tela falha. Novas alterações ficam bloqueadas até recarregar com sucesso, e os formulários salvos são limpos normalmente. Falha de leitura inicial também oferece recuperação. `tests/memberships.mutations.test.mjs` cobre a separação entre falha de gravação e falha de atualização.

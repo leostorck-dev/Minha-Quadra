@@ -1,6 +1,6 @@
 # Arquitetura inicial
 
-Status: base implementada; clientes disponível, demais módulos operacionais pendentes.
+Status em 26/09/2026: autenticação, equipe, clientes/CRM, quadras, agenda, pagamentos manuais, financeiro, aulas, comissões, mensalidades, auditoria e torneios implementados. Torneios incluem grupos, resultados, desempates, eliminatórias, pódio e relatórios CSV; o financeiro também permite exportação. Reservas online e gateway permanecem fora do escopo atual.
 
 ## Aplicação
 

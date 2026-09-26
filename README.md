@@ -33,7 +33,9 @@ Em `/classes`, a equipe agenda aulas, registra presença e acompanha professores
 
 Na mesma página, proprietário e gerente podem registrar a comissão paga de cada aula concluída. A liquidação usa a regra congelada quando a aula foi agendada e lança uma despesa no financeiro. O professor pode consultar as próprias comissões.
 
-Em `/tournaments`, proprietário e gerente criam torneios com categorias e controlam a abertura das inscrições. A equipe cadastra ou retira duplas de clientes, com bloqueio de inscrições repetidas na mesma categoria. Grupos, confrontos e resultados ficam para as próximas etapas.
+Em `/tournaments`, proprietário e gerente criam torneios com categorias e controlam a abertura das inscrições. A equipe cadastra ou retira duplas de clientes, com bloqueio de inscrições repetidas na mesma categoria. A equipe pode sortear grupos, registrar e corrigir resultados com histórico, resolver empates, gerar eliminatórias, disputar terceiro lugar e exportar classificação, partidas e pódio em CSV. O histórico de torneios possui busca, filtros e paginação.
+
+Em `/finance`, a exportação CSV inclui todas as páginas do mês e respeita os filtros. Aulas têm histórico paginado com chamada completa; mensalidades preservam nomes de clientes inativos e oferecem busca para novas adesões.
 
 ## Comandos
 
@@ -56,4 +58,4 @@ Os testes de integração em [tests/crm-tags.database.sql](./tests/crm-tags.data
 - `specs`: visão, arquitetura, constituição e specs de features.
 - `tests`: testes automatizados.
 
-Leia [constitution.md](./specs/constitution.md) antes de implementar uma feature. Convites de funcionários, reservas online e gateway de pagamento ainda precisam de etapas próprias.
+Leia [constitution.md](./specs/constitution.md) antes de implementar uma feature. Convites de funcionários e permissões estão disponíveis nas configurações. Reservas online e gateway de pagamento continuam fora do MVP atual.
