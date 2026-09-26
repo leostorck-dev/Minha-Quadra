@@ -9,6 +9,12 @@
 Respostas de erro seguem `{error: {code, message}}`. O navegador não envia `tenant_id`.
 # Sorteio
 
+## Exportação
+
+- `GET /api/tournaments/:id/export?kind=standings|matches|podium`: proprietário, gerente e recepção baixam CSV UTF-8 com BOM, `Content-Disposition: attachment` e `Cache-Control: private, no-store`.
+- Tipo inválido: 400; sem sessão: 401; papel proibido: 403; torneio inexistente/de outra arena: 404.
+- Todos os registros são consultados com o tenant da sessão e RLS. O nome do arquivo usa apenas UUID validado e o tipo permitido.
+
 ## Terceiro lugar
 
 - `POST /api/tournaments/:id/categories/:categoryId/bronze`: proprietário/gerente cria a disputa entre as perdedoras das semifinais. Não recebe corpo. Retorna 201 com o confronto.

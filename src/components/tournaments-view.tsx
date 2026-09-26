@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TournamentDrawPanel } from "@/components/tournament-draw-panel";
+import { TournamentExports } from "@/components/tournament-exports";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Role } from "@/lib/auth/context";
 import type { TournamentOverview } from "@/features/tournaments/service";
@@ -387,6 +388,11 @@ export function TournamentsView({
                     </span>
                   ))}
                 </div>
+
+                <TournamentExports
+                  key={`exports:${selected.id}`}
+                  tournamentId={selected.id}
+                />
 
                 {registrationOpen && (
                   <div className="mt-6 border-t border-white/10 pt-5">

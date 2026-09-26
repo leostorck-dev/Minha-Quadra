@@ -36,4 +36,10 @@ Após concluir duas semifinais com placar, o gestor pode criar uma disputa opcio
 
 O pódio mostra campeã e vice após a final e terceira colocada após o jogo de terceiro lugar. Não há atribuição automática de terceiro lugar sem partida. Correções e anulações preservam histórico e atualizam o pódio. Para alterar uma semifinal, os resultados da final e do terceiro lugar precisam estar pendentes; seus participantes serão recalculados. A recepção consulta o pódio, enquanto gestores criam a disputa e registram os resultados.
 
+## Relatórios exportáveis
+
+A equipe administrativa pode baixar três relatórios CSV por torneio: classificação dos grupos (incluindo desempates vigentes), partidas de todas as fases e pódio das categorias. Os arquivos identificam resultados pendentes e avanços sem adversário. Categorias sem terceiro lugar disputado não recebem colocação fictícia. A classificação exportada usa os mesmos critérios da tela.
+
+Arquivos usam UTF-8 com BOM e separador ponto e vírgula para importação no Excel. Textos são escapados e entradas que possam ser interpretadas como fórmulas são neutralizadas. A exportação exige sessão e permissão da arena e não inclui contatos dos atletas. Os arquivos representam os dados consultados no momento da exportação; baixe novamente após corrigir resultados.
+
 Horários dos jogos e regulamentos específicos ficam para etapas posteriores.

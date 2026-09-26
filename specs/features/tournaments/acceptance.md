@@ -9,6 +9,13 @@
 - Professor e outra arena não veem nem alteram torneios privados.
 # Grupos e confrontos
 
+## Exportação
+
+- Os botões Classificação, Partidas e Pódio baixam arquivos CSV do torneio selecionado, com nomes das duplas e categorias.
+- Classificação parcial, decisão manual, avanço sem adversário e colocação ainda indefinida devem ser identificados corretamente.
+- Acentos, aspas, separadores e quebras de linha são preservados; textos com prefixos de fórmula são neutralizados; saldos negativos continuam numéricos.
+- `tests/tournaments.reports.test.mjs` verifica serialização, classificação, partidas e pódio pendente.
+
 ## Terceiro lugar e pódio
 
 - Criar bronze requer duas semifinais concluídas com placar; não permite duplicata, categoria só com final ou semifinal com avanço sem adversário.
