@@ -1020,6 +1020,41 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_brackets: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string
+          qualifiers_per_group: number
+          tenant_id: string
+          tournament_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by: string
+          qualifiers_per_group: number
+          tenant_id: string
+          tournament_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string
+          qualifiers_per_group?: number
+          tenant_id?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_brackets_tenant_id_tournament_id_category_id_fkey"
+            columns: ["tenant_id", "tournament_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_categories"
+            referencedColumns: ["tenant_id", "tournament_id", "id"]
+          },
+        ]
+      }
       tournament_categories: {
         Row: {
           drawn_at: string | null
@@ -1152,6 +1187,136 @@ export type Database = {
           },
         ]
       }
+      tournament_knockout_history: {
+        Row: {
+          id: string
+          match_id: string
+          previous_score_a: number | null
+          previous_score_b: number | null
+          reason: string
+          recorded_at: string
+          recorded_by: string
+          score_a: number | null
+          score_b: number | null
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          previous_score_a?: number | null
+          previous_score_b?: number | null
+          reason: string
+          recorded_at?: string
+          recorded_by: string
+          score_a?: number | null
+          score_b?: number | null
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          previous_score_a?: number | null
+          previous_score_b?: number | null
+          reason?: string
+          recorded_at?: string
+          recorded_by?: string
+          score_a?: number | null
+          score_b?: number | null
+          tenant_id?: string
+          tournament_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_knockout_history_tenant_id_tournament_id_match__fkey"
+            columns: ["tenant_id", "tournament_id", "match_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_knockout_matches"
+            referencedColumns: ["tenant_id", "tournament_id", "id"]
+          },
+        ]
+      }
+      tournament_knockout_matches: {
+        Row: {
+          category_id: string
+          id: string
+          position: number
+          result_version: number
+          round: number
+          score_a: number | null
+          score_b: number | null
+          team_a_id: string | null
+          team_b_id: string | null
+          tenant_id: string
+          tournament_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          position: number
+          result_version?: number
+          round: number
+          score_a?: number | null
+          score_b?: number | null
+          team_a_id?: string | null
+          team_b_id?: string | null
+          tenant_id: string
+          tournament_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          position?: number
+          result_version?: number
+          round?: number
+          score_a?: number | null
+          score_b?: number | null
+          team_a_id?: string | null
+          team_b_id?: string | null
+          tenant_id?: string
+          tournament_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_knockout_matches_tenant_id_tournament_id_categ_fkey1"
+            columns: ["tenant_id", "tournament_id", "category_id", "team_a_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_knockout_matches_tenant_id_tournament_id_categ_fkey2"
+            columns: ["tenant_id", "tournament_id", "category_id", "team_b_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_knockout_matches_tenant_id_tournament_id_catego_fkey"
+            columns: ["tenant_id", "tournament_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_brackets"
+            referencedColumns: ["tenant_id", "tournament_id", "category_id"]
+          },
+        ]
+      }
       tournament_matches: {
         Row: {
           category_id: string
@@ -1213,6 +1378,25 @@ export type Database = {
             ]
           },
           {
+            foreignKeyName: "tournament_matches_tenant_id_tournament_id_category_id_gr_fkey1"
+            columns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_b_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "tournament_standings"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_id",
+            ]
+          },
+          {
             foreignKeyName: "tournament_matches_tenant_id_tournament_id_category_id_gro_fkey"
             columns: [
               "tenant_id",
@@ -1223,6 +1407,25 @@ export type Database = {
             ]
             isOneToOne: false
             referencedRelation: "tournament_group_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_matches_tenant_id_tournament_id_category_id_gro_fkey"
+            columns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_a_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "tournament_standings"
             referencedColumns: [
               "tenant_id",
               "tournament_id",
@@ -1493,6 +1696,47 @@ export type Database = {
           },
         ]
       }
+      tournament_standings: {
+        Row: {
+          category_id: string | null
+          conceded: number | null
+          group_id: string | null
+          played: number | null
+          rank: number | null
+          scored: number | null
+          team_id: string | null
+          team_label: string | null
+          tenant_id: string | null
+          tournament_id: string | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_group_teams_tenant_id_tournament_id_category_i_fkey1"
+            columns: ["tenant_id", "tournament_id", "category_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_group_teams_tenant_id_tournament_id_category_id_fkey"
+            columns: ["tenant_id", "tournament_id", "category_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_groups"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+        ]
+      }
     }
     Functions: {
       cancel_class: {
@@ -1653,6 +1897,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_tournament_bracket: {
+        Args: {
+          p_category_id: string
+          p_qualifiers: number
+          p_tournament_id: string
+        }
+        Returns: number
+      }
       dashboard_overview: { Args: never; Returns: Json }
       draw_tournament_category: {
         Args: {
@@ -1782,6 +2034,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "membership_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_knockout_result: {
+        Args: {
+          p_expected_version: number
+          p_match_id: string
+          p_reason: string
+          p_score_a: number
+          p_score_b: number
+          p_tournament_id: string
+        }
+        Returns: {
+          category_id: string
+          id: string
+          position: number
+          result_version: number
+          round: number
+          score_a: number | null
+          score_b: number | null
+          team_a_id: string | null
+          team_b_id: string | null
+          tenant_id: string
+          tournament_id: string
+          winner_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournament_knockout_matches"
           isOneToOne: true
           isSetofReturn: false
         }

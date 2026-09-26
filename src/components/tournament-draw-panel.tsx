@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { groupStandings } from "@/features/tournaments/standings";
 import { TournamentMatchResult } from "@/components/tournament-match-result";
+import { TournamentKnockoutPanel } from "@/components/tournament-knockout-panel";
 import type {
   TournamentCategory,
   TournamentDraw,
@@ -287,7 +288,12 @@ export function TournamentDrawPanel({
                             match={match}
                             labelA={label(match.team_a_id)}
                             labelB={label(match.team_b_id)}
-                            canManage={canManage}
+                            canManage={
+                              canManage &&
+                              !data?.brackets.some(
+                                (b) => b.category_id === category.id,
+                              )
+                            }
                             onSaved={refreshResults}
                           />
                         </li>
@@ -296,6 +302,15 @@ export function TournamentDrawPanel({
                 </article>
               ))}
             </div>
+            {data && (
+              <TournamentKnockoutPanel
+                data={data}
+                categoryId={category.id}
+                tournamentId={tournamentId}
+                canManage={canManage}
+                onSaved={refreshResults}
+              />
+            )}
           </div>
         );
       })}

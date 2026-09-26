@@ -1,5 +1,11 @@
 # Banco
 
+`tournament_standings` é uma view com `security_invoker=true`, calculando jogos, vitórias, pontos e posição por grupo. A RPC de geração usa essa classificação no banco e bloqueia a categoria contra alterações concorrentes nos resultados.
+
+`tournament_brackets` registra a geração única por categoria, quantidade por grupo e autor. `tournament_knockout_matches` guarda rodada, posição, participantes, placar, vencedor e versão. `tournament_knockout_history` preserva correções/anulações. Todas têm RLS e leitura limitada à equipe da arena. Escritas são feitas apenas por RPCs com autorização de gestor.
+
+Resultados dos grupos também passam a bloquear a categoria antes de gravar e são recusados após gerar a chave. Resultados das eliminatórias atualizam os participantes das rodadas seguintes na mesma transação. A versão de partidas que recebem novos participantes é incrementada mesmo sem placar.
+
 Resultados usam `score_a`, `score_b` e `result_version` em `tournament_matches`. A constraint exige placares ambos nulos ou inteiros de 0 a 99 distintos. A RPC `record_tournament_result` obtém a arena do gestor autenticado, bloqueia a linha do confronto, confere a versão esperada e salva resultado e histórico na mesma transação.
 
 `tournament_result_history` guarda placares anteriores/novos, justificativa, autor, horário e versão única por jogo. RLS permite leitura à equipe da arena; usuários autenticados não têm escrita direta. FKs e índices compostos preservam o isolamento entre arenas.

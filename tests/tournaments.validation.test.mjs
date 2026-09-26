@@ -6,10 +6,23 @@ import {
   parseTournamentStatus,
   parseWithdraw,
   parseDraw,
+  parseBracket,
 } from "../src/features/tournaments/validation.ts";
 
 const first = "a9393939-aaaa-4939-8939-393939393931";
 const second = "b9393939-bbbb-4939-8939-393939393932";
+
+test("eliminatória restringe classificadas e identidade", () => {
+  assert.deepEqual(parseBracket({ categoryId: first, qualifiers: 2 }), {
+    categoryId: first,
+    qualifiers: 2,
+  });
+  for (const qualifiers of [0, 3, 1.5, "1", null])
+    assert.throws(() => parseBracket({ categoryId: first, qualifiers }));
+  assert.throws(() =>
+    parseBracket({ categoryId: first, qualifiers: 1, tenantId: second }),
+  );
+});
 
 test("sorteio aceita apenas categoria e tamanhos suportados", () => {
   assert.deepEqual(parseDraw({ categoryId: first, groupSize: 3 }), {

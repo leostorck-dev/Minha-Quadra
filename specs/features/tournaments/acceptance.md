@@ -9,6 +9,15 @@
 - Professor e outra arena não veem nem alteram torneios privados.
 # Grupos e confrontos
 
+## Eliminatórias
+
+- Gestor classifica 1 ou 2 duplas por grupo após concluir os resultados e gera chave única.
+- Categoria de 6, 9 e 64 duplas é coberta no teste transacional: 4, 3 e 44 classificadas, respectivamente; chaves completas, sem duplas repetidas, com avanços automáticos corretos.
+- Todos os resultados levam a um campeão. Correção antes da próxima rodada propaga vencedor. Resultado posterior impede alteração do anterior. Anular a final remove a indicação de campeão.
+- Empate circular completo impede gerar chave tanto para 1 quanto para 2 vagas. Resultados de grupos ficam bloqueados após geração.
+- Recepção consulta mas não altera; outra arena não acessa; histórico não pode ser apagado pelo usuário.
+- `tests/tournament-knockouts.database.sql` executa tudo em uma transação com rollback.
+
 ## Resultados
 
 - Gestor lança, corrige e anula um resultado com justificativa; a classificação é recalculada e o histórico é preservado.

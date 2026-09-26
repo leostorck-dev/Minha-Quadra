@@ -155,6 +155,8 @@ export async function withdrawTeam(tournamentId: string, teamId: string) {
 }
 
 export type TournamentDraw = {
+  brackets: Database["public"]["Tables"]["tournament_brackets"]["Row"][];
+  knockouts: Database["public"]["Tables"]["tournament_knockout_matches"]["Row"][];
   groups: Database["public"]["Tables"]["tournament_groups"]["Row"][];
   entries: Database["public"]["Tables"]["tournament_group_teams"]["Row"][];
   matches: Database["public"]["Tables"]["tournament_matches"]["Row"][];
@@ -175,7 +177,7 @@ export async function getDraw(
   if (!tournament.data)
     throw new TournamentNotFoundError("Torneio não encontrado.");
   // Per-tournament limits cover six categories of up to 64 teams each.
-  const [groups, entries, matches] = await Promise.all([
+  const [groups, entries, matches, brackets, knockouts] = await Promise.all([
     supabase
       .from("tournament_groups")
       .select("*")
@@ -197,10 +199,32 @@ export async function getDraw(
       .eq("tournament_id", tournamentId)
       .order("number")
       .limit(576),
+    supabase
+      .from("tournament_brackets")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .limit(6),
+    supabase
+      .from("tournament_knockout_matches")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .order("round")
+      .order("position")
+      .limit(378),
   ]);
-  if (groups.error || entries.error || matches.error)
+  if (
+    groups.error ||
+    entries.error ||
+    matches.error ||
+    brackets.error ||
+    knockouts.error
+  )
     throw new Error("Não foi possível carregar grupos e confrontos.");
   return {
+    brackets: brackets.data ?? [],
+    knockouts: knockouts.data ?? [],
     groups: groups.data ?? [],
     entries: entries.data ?? [],
     matches: matches.data ?? [],
@@ -226,17 +250,21 @@ export async function recordResult(
   tournamentId: string,
   matchId: string,
   input: ReturnType<typeof parseResult>,
+  knockout = false,
 ) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("record_tournament_result", {
-    p_tournament_id: tournamentId,
-    p_match_id: matchId,
-    // Supabase's generated RPC types omit nullable parameters; null clears a result.
-    p_score_a: input.scoreA!,
-    p_score_b: input.scoreB!,
-    p_expected_version: input.expectedVersion,
-    p_reason: input.reason,
-  });
+  const { data, error } = await supabase.rpc(
+    knockout ? "record_knockout_result" : "record_tournament_result",
+    {
+      p_tournament_id: tournamentId,
+      p_match_id: matchId,
+      // Supabase's generated RPC types omit nullable parameters; null clears a result.
+      p_score_a: input.scoreA!,
+      p_score_b: input.scoreB!,
+      p_expected_version: input.expectedVersion,
+      p_reason: input.reason,
+    },
+  );
   check(error, "Não foi possível salvar o resultado.");
   return data;
 }
@@ -245,10 +273,11 @@ export async function resultHistory(
   context: AuthContext,
   tournamentId: string,
   matchId: string,
+  knockout = false,
 ) {
   const supabase = await createClient();
   const match = await supabase
-    .from("tournament_matches")
+    .from(knockout ? "tournament_knockout_matches" : "tournament_matches")
     .select("id")
     .eq("tenant_id", context.tenantId)
     .eq("tournament_id", tournamentId)
@@ -258,7 +287,9 @@ export async function resultHistory(
   if (!match.data)
     throw new TournamentNotFoundError("Confronto não encontrado.");
   const { data, error } = await supabase
-    .from("tournament_result_history")
+    .from(
+      knockout ? "tournament_knockout_history" : "tournament_result_history",
+    )
     .select("version,score_a,score_b,reason,recorded_at")
     .eq("tenant_id", context.tenantId)
     .eq("tournament_id", tournamentId)
@@ -266,5 +297,20 @@ export async function resultHistory(
     .order("version", { ascending: false })
     .limit(50);
   check(error, "Não foi possível consultar o histórico.");
+  return data;
+}
+
+export async function createBracket(
+  tournamentId: string,
+  categoryId: string,
+  qualifiers: number,
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_tournament_bracket", {
+    p_tournament_id: tournamentId,
+    p_category_id: categoryId,
+    p_qualifiers: qualifiers,
+  });
+  check(error, "Não foi possível gerar a chave.");
   return data;
 }

@@ -16,4 +16,12 @@ Toda alteração preserva placares anteriores, autor, data e versão no históri
 
 A classificação considera apenas jogos com resultado. Ordem: vitórias, saldo do placar e pontos marcados. Empate em todos os critérios compartilha a posição, sem classificação automática para eliminatórias. São mostrados jogos, vitórias, derrotas, pontos pró/contra e saldo. A classificação é parcial enquanto houver partidas pendentes.
 
-Horários dos jogos, regulamentos específicos e fases eliminatórias serão implementados nas próximas etapas.
+## Eliminatórias
+
+Após concluir todos os jogos de uma categoria, o gestor escolhe 1 ou 2 classificadas por grupo. Os critérios são os mesmos da classificação. Empates que ultrapassem o corte de vagas bloqueiam a geração; esta etapa não inclui decisão manual de desempate. São necessárias de 2 a 64 classificadas.
+
+A chave é sorteada uma única vez e pode reunir duplas do mesmo grupo. É completada para uma potência de dois com avanços sem adversário na primeira rodada. Esses avanços são automáticos e não recebem placar. As demais partidas usam os mesmos placares simples e histórico da fase de grupos. Vencedores avançam automaticamente até a final, cuja vencedora aparece como campeã da categoria.
+
+Gerar a chave bloqueia resultados dos grupos. Correções e anulações na eliminatória são permitidas apenas enquanto a próxima partida estiver sem resultado. Para corrigir fases anteriores, anule os resultados posteriores, começando pela final. Alterar os participantes de uma partida incrementa sua versão e impede salvar formulários antigos. Todas as operações da categoria usam o mesmo bloqueio transacional.
+
+Horários dos jogos, regulamentos específicos, decisão manual de desempates e disputa de terceiro lugar ficam para etapas posteriores.

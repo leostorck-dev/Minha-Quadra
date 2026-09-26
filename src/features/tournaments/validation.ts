@@ -111,6 +111,13 @@ export function parseDraw(value: unknown) {
   return { categoryId: uuid(data.categoryId), groupSize: data.groupSize };
 }
 
+export function parseBracket(value: unknown) {
+  const data = record(value, ["categoryId", "qualifiers"]);
+  if (data.qualifiers !== 1 && data.qualifiers !== 2)
+    throw new ValidationError("Escolha 1 ou 2 classificadas por grupo.");
+  return { categoryId: uuid(data.categoryId), qualifiers: data.qualifiers };
+}
+
 export function parseResult(value: unknown) {
   const data = record(value, ["scoreA", "scoreB", "expectedVersion", "reason"]);
   const score = (v: unknown): number | null => {

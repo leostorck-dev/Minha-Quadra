@@ -15,12 +15,15 @@ export function TournamentMatchResult({
   labelB,
   canManage,
   onSaved,
+  knockout = false,
 }: {
-  match: TournamentDraw["matches"][number];
+  match:
+    TournamentDraw["matches"][number] | TournamentDraw["knockouts"][number];
   labelA: string;
   labelB: string;
   canManage: boolean;
   onSaved: () => Promise<void>;
+  knockout?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [scoreA, setScoreA] = useState(match.score_a?.toString() ?? "");
@@ -29,7 +32,7 @@ export function TournamentMatchResult({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<History[] | null>(null);
-  const path = `/api/tournaments/${match.tournament_id}/matches/${match.id}/result`;
+  const path = `/api/tournaments/${match.tournament_id}/${knockout ? "knockouts" : "matches"}/${match.id}/result`;
   async function save(clear = false) {
     if (
       clear &&
