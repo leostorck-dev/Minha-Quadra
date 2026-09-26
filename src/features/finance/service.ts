@@ -1,3 +1,4 @@
+import { collectById } from "@/lib/database/pagination";
 import { Temporal } from "@js-temporal/polyfill";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
@@ -22,7 +23,14 @@ export type FinancialTransaction = {
   dueDate: string | null;
   paidAt: string | null;
   activityOn: string;
-  sourceType: "manual" | "reservation" | "refund" | "membership";
+  sourceType:
+    | "manual"
+    | "reservation"
+    | "refund"
+    | "membership"
+    | "class"
+    | "class_refund"
+    | "coach_commission";
   createdAt: string;
 };
 
@@ -99,6 +107,40 @@ export async function listFinancialTransactions(
       payable: row?.payable ?? 0,
     },
   };
+}
+
+export async function exportFinancialTransactions(
+  context: AuthContext,
+  options: FinanceList,
+): Promise<FinancialTransaction[]> {
+  const supabase = await createClient();
+  const start = options.month + "-01";
+  const end = Temporal.PlainYearMonth.from(options.month)
+    .add({ months: 1 })
+    .toPlainDate({ day: 1 })
+    .toString();
+  const rows = await collectById<TransactionRow>((after) => {
+    let query = supabase
+      .from("financial_transactions")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .gte("activity_on", start)
+      .lt("activity_on", end)
+      .order("id")
+      .limit(200);
+    if (options.type !== "all") query = query.eq("type", options.type);
+    if (options.status !== "all") query = query.eq("status", options.status);
+    if (after) query = query.gt("id", after);
+    return query;
+  }, "Não foi possível exportar todos os lançamentos. Tente novamente.");
+  return rows
+    .map(toTransaction)
+    .sort(
+      (a, b) =>
+        a.activityOn.localeCompare(b.activityOn) ||
+        a.createdAt.localeCompare(b.createdAt) ||
+        a.id.localeCompare(b.id),
+    );
 }
 
 export async function createFinancialTransaction(

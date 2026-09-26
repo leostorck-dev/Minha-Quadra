@@ -17,3 +17,9 @@ Registrar receitas e despesas manuais, acompanhar contas a pagar e visualizar o 
 - Contas bancárias, conciliação, edição de lançamentos pagos, gráficos avançados e gateway ficam para etapas futuras.
 
 Veja [database.md](./database.md), [api.md](./api.md) e [acceptance.md](./acceptance.md).
+
+## Exportação mensal
+
+Proprietário e gerente podem baixar CSV com todos os lançamentos do mês e dos filtros de tipo e situação selecionados, incluindo todas as páginas. O arquivo contém identificador, data de referência da arena, tipo, categoria, descrição, valor em reais, situação, vencimento, pagamento em UTC e origem. Distingue reservas, estornos, mensalidades, aulas e comissões. Pendentes e cancelados permanecem identificados; não são apresentados como pagamentos realizados.
+
+O CSV usa UTF-8 com BOM, ponto e vírgula e duas casas decimais com vírgula. Textos são escapados contra fórmulas. O arquivo vazio contém os cabeçalhos. A leitura em lotes evita truncamento; falha intermediária impede baixar um relatório parcial. A exportação consulta o estado atual e pode refletir alterações simultâneas entre lotes; não constitui um fechamento imutável. Nenhum contato de cliente é incluído.

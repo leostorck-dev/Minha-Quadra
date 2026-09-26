@@ -1,5 +1,7 @@
 "use client";
 
+import { FinanceExport } from "@/components/finance-export";
+import { FINANCE_SOURCES } from "@/features/finance/reports";
 import { Temporal } from "@js-temporal/polyfill";
 import { useEffect, useState, type FormEvent } from "react";
 import type { FinancialTransaction } from "@/features/finance/service";
@@ -399,6 +401,8 @@ export function FinanceView({
         </label>
       </div>
 
+      <FinanceExport month={month} type={type} status={status} />
+
       {actionError && (
         <p role="alert" className="mt-5 text-sm text-rose-300">
           {actionError}
@@ -421,7 +425,11 @@ export function FinanceView({
         </div>
       ) : data ? (
         <>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <p className="mt-6 text-xs text-slate-400">
+            Resumo de todo o mês, independentemente dos filtros de tipo e
+            situação.
+          </p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => (
               <div
                 key={card.label}
@@ -460,10 +468,8 @@ export function FinanceView({
                         <p className="mt-1 text-xs text-slate-400">
                           {item.category} ·{" "}
                           {item.activityOn.split("-").reverse().join("/")}
-                          {item.sourceType === "membership" && " · Mensalidade"}
-                          {(item.sourceType === "reservation" ||
-                            item.sourceType === "refund") &&
-                            " · Reserva"}
+                          {" · "}
+                          {FINANCE_SOURCES[item.sourceType] ?? item.sourceType}
                         </p>
                         {overdue && (
                           <p className="mt-1 text-xs text-rose-300">
