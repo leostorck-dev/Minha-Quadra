@@ -1,3 +1,4 @@
+import { collectById } from "@/lib/database/pagination";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
@@ -20,7 +21,7 @@ export type MembershipOverview = {
   plans: Plan[];
   memberships: Membership[];
   payments: MembershipPayment[];
-  customers: { id: string; name: string }[];
+  customers: { id: string; name: string; status: string }[];
   usage: MembershipUsage[];
 };
 
@@ -51,47 +52,63 @@ export async function overview(
   context: AuthContext,
 ): Promise<MembershipOverview> {
   const supabase = await createClient();
-  const [plans, memberships, payments, customers, usage] = await Promise.all([
-    supabase
-      .from("membership_plans")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .order("name"),
-    supabase
-      .from("customer_memberships")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .order("next_due_on"),
+  const [plans, memberships, payments, customers] = await Promise.all([
+    collectById<Plan>((after) => {
+      let query = supabase
+        .from("membership_plans")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .order("id")
+        .limit(200);
+      if (after) query = query.gt("id", after);
+      return query;
+    }, "Não foi possível carregar todos os planos."),
+    collectById<Membership>((after) => {
+      let query = supabase
+        .from("customer_memberships")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .order("id")
+        .limit(200);
+      if (after) query = query.gt("id", after);
+      return query;
+    }, "Não foi possível carregar todas as assinaturas."),
     supabase
       .from("membership_payments")
       .select("*")
       .eq("tenant_id", context.tenantId)
       .order("paid_at", { ascending: false })
+      .order("id")
       .limit(50),
-    supabase
-      .from("customers")
-      .select("id, name")
-      .eq("tenant_id", context.tenantId)
-      .eq("status", "active")
-      .order("name")
-      .limit(500),
-    supabase
-      .from("membership_class_usage")
-      .select(
-        "membership_id, cycle_start, cycle_end, attended_classes, classes_per_month, remaining_classes",
-      )
-      .eq("tenant_id", context.tenantId),
+    collectById<MembershipOverview["customers"][number]>((after) => {
+      let query = supabase
+        .from("customers")
+        .select("id, name, status")
+        .eq("tenant_id", context.tenantId)
+        .order("id")
+        .limit(200);
+      if (after) query = query.gt("id", after);
+      return query;
+    }, "Não foi possível carregar os nomes dos clientes."),
   ]);
-  if (
-    plans.error ||
-    memberships.error ||
-    payments.error ||
-    customers.error ||
-    usage.error
-  ) {
-    throw new Error("Não foi possível carregar planos e mensalidades.");
+  if (payments.error)
+    throw new Error("Não foi possível carregar os pagamentos recentes.");
+  const usage: Database["public"]["Views"]["membership_class_usage"]["Row"][] =
+    [];
+  for (let offset = 0; offset < memberships.length; offset += 100) {
+    const result = await supabase
+      .from("membership_class_usage")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .in(
+        "membership_id",
+        memberships.slice(offset, offset + 100).map((item) => item.id),
+      );
+    if (result.error)
+      throw new Error("Não foi possível calcular o consumo de aulas.");
+    usage.push(...result.data);
   }
-  const usageItems = (usage.data ?? []).map((row) => {
+  const usageItems = usage.map((row) => {
     if (
       !row.membership_id ||
       !row.cycle_start ||
@@ -110,10 +127,13 @@ export async function overview(
     };
   });
   return {
-    plans: plans.data ?? [],
-    memberships: memberships.data ?? [],
+    plans: plans.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    memberships: memberships.sort(
+      (a, b) =>
+        a.next_due_on.localeCompare(b.next_due_on) || a.id.localeCompare(b.id),
+    ),
     payments: payments.data ?? [],
-    customers: customers.data ?? [],
+    customers: customers.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     usage: usageItems,
   };
 }

@@ -47,6 +47,7 @@ export function MembershipsView({ today }: { today: string }) {
   const [price, setPrice] = useState("");
   const [classes, setClasses] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startOn, setStartOn] = useState(today);
   const [method, setMethod] = useState<MembershipMethod>("pix");
@@ -121,6 +122,10 @@ export function MembershipsView({ today }: { today: string }) {
   const eligible =
     data?.customers.filter(
       (item) =>
+        item.status === "active" &&
+        item.name
+          .toLocaleLowerCase("pt-BR")
+          .includes(customerSearch.trim().toLocaleLowerCase("pt-BR")) &&
         !active.some((membership) => membership.customer_id === item.id),
     ) ?? [];
 
@@ -175,7 +180,7 @@ export function MembershipsView({ today }: { today: string }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-semibold">
-              {byCustomer.get(item.customer_id) ?? "Cliente inativo"} ·{" "}
+              {byCustomer.get(item.customer_id) ?? "Cliente indisponível"} ·{" "}
               {byPlan.get(item.plan_id) ?? "Plano"}
             </p>
             <p className="text-sm text-slate-400">
@@ -358,6 +363,27 @@ export function MembershipsView({ today }: { today: string }) {
             <section className="rounded-xl border border-white/10 bg-slate-900 p-5">
               <h2 className="text-xl font-bold">Adicionar cliente ao plano</h2>
               <form onSubmit={addMembership} className="mt-4 grid gap-3">
+                <label className="text-sm">
+                  Buscar cliente por nome
+                  <input
+                    type="search"
+                    maxLength={120}
+                    value={customerSearch}
+                    onChange={(event) => {
+                      setCustomerSearch(event.target.value);
+                      setCustomerId("");
+                    }}
+                    className="mt-2 w-full rounded-lg border border-white/20 bg-slate-800 p-3"
+                  />
+                </label>
+                <p className="text-xs text-slate-400">
+                  Somente clientes ativos sem assinatura ativa podem aderir.
+                </p>
+                {!eligible.length && (
+                  <p className="text-sm text-slate-400">
+                    Nenhum cliente disponível para esta busca.
+                  </p>
+                )}
                 <select
                   required
                   value={customerId}
@@ -443,6 +469,10 @@ export function MembershipsView({ today }: { today: string }) {
           </section>
           <section className="rounded-xl border border-white/10 bg-slate-900 p-5">
             <h2 className="text-xl font-bold">Pagamentos recentes</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Últimos 50 pagamentos registrados. Consulte o Financeiro para
+              períodos anteriores.
+            </p>
             <ul className="mt-4">
               {data.payments.length ? (
                 data.payments.map((payment) => (
@@ -454,7 +484,7 @@ export function MembershipsView({ today }: { today: string }) {
                       {byCustomer.get(
                         byMembership.get(payment.membership_id)?.customer_id ??
                           "",
-                      ) ?? "Cliente inativo"}{" "}
+                      ) ?? "Cliente indisponível"}{" "}
                       · {date(payment.period_due_on)} ·{" "}
                       {methods[payment.method as MembershipMethod]}
                     </span>

@@ -24,6 +24,7 @@ declare
   v_plan public.membership_plans;
   v_membership public.customer_memberships;
   v_payment public.membership_payments;
+  v_customer uuid;
   v_start date := (date_trunc('month', current_date)::date - interval '1 month' + interval '9 days')::date;
   rejected boolean;
 begin
@@ -91,6 +92,27 @@ begin
   perform public.cancel_customer_membership(v_membership.id);
   if (select count(*) from public.membership_payments where membership_id = v_membership.id) <> 1
     then raise exception 'Histórico perdido'; end if;
+  update public.customers set status = 'inactive' where id = 'a3333333-aaaa-4333-8333-333333333339';
+  if (select count(*) from public.membership_payments p
+    join public.customer_memberships m on m.id = p.membership_id
+    join public.customers c on c.id = m.customer_id
+    where p.id = v_payment.id and c.name = 'Cliente Assinante' and c.status = 'inactive') <> 1
+    then raise exception 'Identidade do cliente inativo perdida no histórico'; end if;
+  perform public.set_membership_plan_active(v_plan.id, true);
+  rejected := false;
+  begin
+    perform public.enroll_customer_membership('a3333333-aaaa-4333-8333-333333333339', v_plan.id, v_start);
+  exception when no_data_found then rejected := true;
+  end;
+  if not rejected then raise exception 'Cliente inativo aceito em nova adesão'; end if;
+  insert into public.customers (tenant_id,name,phone,created_by)
+  select 'a2222222-aaaa-4222-8222-222222222229', 'Volume ' || lpad(n::text,4,'0'),
+    '1198888' || lpad(n::text,4,'0'), 'a1111111-aaaa-4111-8111-111111111119'
+    from generate_series(1,501) n;
+  select id into v_customer from public.customers where name = 'Volume 0501';
+  v_membership := public.enroll_customer_membership(v_customer, v_plan.id, current_date);
+  if (select count(*) from public.membership_class_usage where membership_id = v_membership.id) <> 1
+    then raise exception 'Consumo do cliente além do limite indisponível'; end if;
 end;
 $$;
 
