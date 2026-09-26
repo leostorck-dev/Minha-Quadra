@@ -101,6 +101,12 @@ begin
     v_class := public.create_class(v_coach,'a3333333-aaaa-4333-8333-333333333333','group',
       v_start,v_start + interval '1 hour',120,v_students);
   end loop;
+  select count(*) into v_count from public.class_sessions c join public.reservations r
+    on r.id = c.reservation_id and r.tenant_id = c.tenant_id
+    where c.coach_id = v_coach and c.status = 'scheduled'
+      and r.start_at >= ((current_date + 90)::timestamp at time zone 'America/Sao_Paulo')
+      and r.start_at < ((current_date + 91)::timestamp at time zone 'America/Sao_Paulo');
+  if v_count <> 1 then raise exception 'Filtro de data de aula não isolou o dia'; end if;
   if (select count(*) from public.class_students) <= 1000 then raise exception 'Fixture insuficiente'; end if;
   select array_agg(id) into v_ids from (
     select id from public.class_sessions where status = 'scheduled' and coach_id = v_coach

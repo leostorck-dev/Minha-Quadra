@@ -1,3 +1,4 @@
+import { classDayWindow } from "./validation";
 import { collectById } from "@/lib/database/pagination";
 import type { parseClassSearch } from "./validation";
 import type { AuthContext } from "@/lib/auth/context";
@@ -60,11 +61,27 @@ export async function overview(
   const pageSize = 25;
   let classQuery = supabase
     .from("class_sessions")
-    .select("*", { count: "exact" })
+    .select(
+      "*, reservation:reservations!class_sessions_reservation_fk!inner(start_at)",
+      { count: "exact" },
+    )
     .eq("tenant_id", context.tenantId);
   if (options.status !== "all")
     classQuery = classQuery.eq("status", options.status);
   if (options.coachId) classQuery = classQuery.eq("coach_id", options.coachId);
+  if (options.date) {
+    const { data: arena, error } = await supabase
+      .from("tenants")
+      .select("timezone")
+      .eq("id", context.tenantId)
+      .single();
+    if (error || !arena)
+      throw new Error("Não foi possível carregar o fuso da arena.");
+    const window = classDayWindow(options.date, arena.timezone);
+    classQuery = classQuery
+      .gte("reservation.start_at", window.start)
+      .lt("reservation.start_at", window.end);
+  }
   const [coaches, classes, customers, courts, profiles] = await Promise.all([
     supabase
       .from("coaches")

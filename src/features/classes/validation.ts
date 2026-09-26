@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import { ValidationError } from "../../lib/api/validation-error.ts";
 
 export const CLASS_KINDS = ["individual", "duo", "group", "trial"] as const;
@@ -12,7 +13,17 @@ export function parseClassSearch(params: URLSearchParams) {
     throw new ValidationError("Página inválida.");
   if (!["all", "scheduled", "completed", "cancelled"].includes(status))
     throw new ValidationError("Situação da aula inválida.");
-  return { page, status, coachId: coachId ? uuid(coachId) : null };
+  const date = params.get("date") || null;
+  if (date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+      throw new ValidationError("Data da aula inválida.");
+    try {
+      Temporal.PlainDate.from(date);
+    } catch {
+      throw new ValidationError("Data da aula inválida.");
+    }
+  }
+  return { page, status, coachId: coachId ? uuid(coachId) : null, date };
 }
 
 export function uuid(value: unknown): string {
@@ -191,4 +202,12 @@ export function parseClassChange(value: unknown) {
   if (new Set(presentCustomerIds).size !== presentCustomerIds.length)
     throw new ValidationError("Aluno duplicado na presença.");
   return { status: "completed" as const, presentCustomerIds };
+}
+
+export function classDayWindow(date: string, timezone: string) {
+  const day = Temporal.PlainDate.from(date);
+  return {
+    start: day.toZonedDateTime(timezone).toInstant().toString(),
+    end: day.add({ days: 1 }).toZonedDateTime(timezone).toInstant().toString(),
+  };
 }

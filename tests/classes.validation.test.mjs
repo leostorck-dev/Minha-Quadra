@@ -77,6 +77,7 @@ test("consulta de aulas valida páginas, situação e professor", () => {
     page: 1,
     status: "all",
     coachId: null,
+    date: null,
   });
   assert.deepEqual(
     parseClassSearch(
@@ -86,7 +87,7 @@ test("consulta de aulas valida páginas, situação e professor", () => {
         coachId: ids.coachId,
       }),
     ),
-    { page: 21, status: "scheduled", coachId: ids.coachId },
+    { page: 21, status: "scheduled", coachId: ids.coachId, date: null },
   );
   for (const params of [
     { page: "0" },
@@ -98,4 +99,30 @@ test("consulta de aulas valida páginas, situação e professor", () => {
   ]) {
     assert.throws(() => parseClassSearch(new URLSearchParams(params)));
   }
+});
+
+import { classDayWindow } from "../src/features/classes/validation.ts";
+test("filtro por data rejeita datas inexistentes e combina professor e situação", () => {
+  const value = parseClassSearch(
+    new URLSearchParams({
+      date: "2026-09-26",
+      status: "scheduled",
+      coachId: ids.coachId,
+    }),
+  );
+  assert.equal(value.date, "2026-09-26");
+  assert.equal(value.coachId, ids.coachId);
+  for (const date of ["2026-02-30", "2026-13-01", "2026-09", "26/09/2026"])
+    assert.throws(() => parseClassSearch(new URLSearchParams({ date })));
+  assert.equal(parseClassSearch(new URLSearchParams("date=")).date, null);
+});
+test("dia da aula respeita fuso e horário de verão", () => {
+  assert.deepEqual(classDayWindow("2026-09-26", "America/Sao_Paulo"), {
+    start: "2026-09-26T03:00:00Z",
+    end: "2026-09-27T03:00:00Z",
+  });
+  assert.deepEqual(classDayWindow("2026-03-08", "America/New_York"), {
+    start: "2026-03-08T05:00:00Z",
+    end: "2026-03-09T04:00:00Z",
+  });
 });

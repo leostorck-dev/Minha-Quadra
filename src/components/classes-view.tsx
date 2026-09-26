@@ -299,6 +299,7 @@ export function ClassesView({
   const [endLocal, setEndLocal] = useState(`${today}T11:00`);
   const [price, setPrice] = useState("0");
   const [customerIds, setCustomerIds] = useState<string[]>([]);
+  const [dateFilter, setDateFilter] = useState("");
   const [coachFilter, setCoachFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -310,6 +311,7 @@ export function ClassesView({
     new URLSearchParams({
       page: String(page),
       status: statusFilter,
+      date: dateFilter,
       ...(coachFilter ? { coachId: coachFilter } : {}),
     });
   const currentUrl = useRef(url);
@@ -425,6 +427,7 @@ export function ClassesView({
       setPage(1);
       setStatusFilter("all");
       setCoachFilter("");
+      setDateFilter("");
     }
   }
 
@@ -836,6 +839,51 @@ export function ClassesView({
                   ))}
                 </select>
               )}
+            </div>
+            <div className="mb-4 flex flex-wrap items-end gap-3">
+              <label className="text-sm">
+                Data da aula
+                <input
+                  type="date"
+                  value={dateFilter}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setDateFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  className="mt-2 block rounded-lg border border-white/20 bg-slate-800 p-2"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setDateFilter(
+                    Temporal.Instant.fromEpochMilliseconds(nowEpoch)
+                      .toZonedDateTimeISO(timezone)
+                      .toPlainDate()
+                      .toString(),
+                  );
+                  setPage(1);
+                }}
+                className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+              >
+                Hoje
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setDateFilter("");
+                  setPage(1);
+                }}
+                className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+              >
+                Todas as datas
+              </button>
+              <p className="text-xs text-slate-400">
+                Dia de início da aula no fuso {timezone}.
+              </p>
             </div>
             <p className="mb-3 text-sm text-slate-400">
               {data.count} aulas no filtro · 25 cadastros por página, mais
