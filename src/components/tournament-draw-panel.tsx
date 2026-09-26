@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { groupStandings } from "@/features/tournaments/standings";
 import { TournamentMatchResult } from "@/components/tournament-match-result";
 import { TournamentKnockoutPanel } from "@/components/tournament-knockout-panel";
+import { TournamentTiebreakPanel } from "@/components/tournament-tiebreak-panel";
 import type {
   TournamentCategory,
   TournamentDraw,
@@ -218,8 +219,8 @@ export function TournamentDrawPanel({
                   </h6>
                   <p className="mt-1 text-xs text-slate-400">
                     Ordem: vitórias, saldo e pontos marcados. Empates nesses
-                    critérios compartilham posição. Placar simples, sem sets
-                    separados.
+                    critérios compartilham posição até decisão do gestor. Placar
+                    simples, sem sets separados.
                   </p>
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full text-left text-xs">
@@ -252,6 +253,8 @@ export function TournamentDrawPanel({
                           data?.matches.filter(
                             (m) => m.group_id === group.id,
                           ) ?? [],
+                          data?.tiebreaks.find((t) => t.group_id === group.id)
+                            ?.team_ids,
                         ).map((row) => (
                           <tr
                             key={row.teamId}
@@ -272,6 +275,15 @@ export function TournamentDrawPanel({
                       </tbody>
                     </table>
                   </div>
+                  {data && (
+                    <TournamentTiebreakPanel
+                      key={`${group.id}:${group.standings_version}`}
+                      data={data}
+                      group={group}
+                      canManage={canManage}
+                      onSaved={refreshResults}
+                    />
+                  )}
                   <h6 className="mt-4 text-xs font-bold text-slate-400 uppercase">
                     Confrontos
                   </h6>

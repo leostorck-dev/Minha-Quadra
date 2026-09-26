@@ -1,5 +1,9 @@
 # Banco
 
+`tournament_tiebreaks` guarda decisões com lista ordenada de duplas, justificativa, autor, versão e situação (`active`, `superseded`, `results_changed`). Índice parcial limita uma decisão vigente por grupo; RLS permite apenas leitura à equipe da arena. A RPC valida a lista completa sem duplicação e preserva a ordem dos critérios automáticos. Categoria e grupo são bloqueados na transação, com conferência de `standings_version`.
+
+O trigger de atualização dos placares incrementa a versão do grupo e invalida sua decisão vigente. `tournament_qualification`, com `security_invoker=true`, combina a classificação automática e a decisão vigente para gerar as eliminatórias. Nenhum placar é modificado pelo desempate.
+
 `tournament_standings` é uma view com `security_invoker=true`, calculando jogos, vitórias, pontos e posição por grupo. A RPC de geração usa essa classificação no banco e bloqueia a categoria contra alterações concorrentes nos resultados.
 
 `tournament_brackets` registra a geração única por categoria, quantidade por grupo e autor. `tournament_knockout_matches` guarda rodada, posição, participantes, placar, vencedor e versão. `tournament_knockout_history` preserva correções/anulações. Todas têm RLS e leitura limitada à equipe da arena. Escritas são feitas apenas por RPCs com autorização de gestor.

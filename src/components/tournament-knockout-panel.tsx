@@ -66,9 +66,9 @@ export function TournamentKnockoutPanel({
         <>
           <p className="mt-2 text-sm text-slate-400">
             Conclua todos os jogos. Classificam-se 1 ou 2 duplas por grupo pelos
-            critérios da tabela. Empates que afetem a vaga impedem a geração.
-            São necessárias pelo menos duas classificadas. A chave é sorteada,
-            com avanços sem adversário quando necessário.
+            critérios da tabela. Resolva os empates que afetem a vaga antes de
+            gerar a chave. São necessárias pelo menos duas classificadas. A
+            chave é sorteada, com avanços sem adversário quando necessário.
           </p>
           {canManage && (
             <form

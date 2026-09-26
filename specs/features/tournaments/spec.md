@@ -18,10 +18,16 @@ A classificação considera apenas jogos com resultado. Ordem: vitórias, saldo 
 
 ## Eliminatórias
 
-Após concluir todos os jogos de uma categoria, o gestor escolhe 1 ou 2 classificadas por grupo. Os critérios são os mesmos da classificação. Empates que ultrapassem o corte de vagas bloqueiam a geração; esta etapa não inclui decisão manual de desempate. São necessárias de 2 a 64 classificadas.
+Após concluir todos os jogos de uma categoria, o gestor escolhe 1 ou 2 classificadas por grupo. Os critérios são os mesmos da classificação. Empates que ultrapassem o corte de vagas bloqueiam a geração até uma decisão manual de desempate. São necessárias de 2 a 64 classificadas.
 
 A chave é sorteada uma única vez e pode reunir duplas do mesmo grupo. É completada para uma potência de dois com avanços sem adversário na primeira rodada. Esses avanços são automáticos e não recebem placar. As demais partidas usam os mesmos placares simples e histórico da fase de grupos. Vencedores avançam automaticamente até a final, cuja vencedora aparece como campeã da categoria.
 
 Gerar a chave bloqueia resultados dos grupos. Correções e anulações na eliminatória são permitidas apenas enquanto a próxima partida estiver sem resultado. Para corrigir fases anteriores, anule os resultados posteriores, começando pela final. Alterar os participantes de uma partida incrementa sua versão e impede salvar formulários antigos. Todas as operações da categoria usam o mesmo bloqueio transacional.
 
-Horários dos jogos, regulamentos específicos, decisão manual de desempates e disputa de terceiro lugar ficam para etapas posteriores.
+## Desempate manual
+
+Proprietário ou gerente pode definir uma ordem entre duplas empatadas após concluir os jogos do grupo, informando o critério utilizado numa justificativa de 3 a 200 caracteres. Apenas duplas iguais em vitórias, saldo e pontos marcados podem trocar de posição. A decisão não altera placares ou estatísticas. A classificação e a geração da chave passam a usar a ordem escolhida.
+
+O histórico preserva ordem, motivo, autor, data e versão. Revisar uma decisão marca a anterior como substituída. Qualquer correção ou anulação de placar do grupo invalida automaticamente a decisão vigente, exigindo revisão. A versão do grupo impede que uma tela antiga sobrescreva mudanças recentes. A geração da eliminatória bloqueia novas decisões. Recepção consulta decisões e histórico, sem permissão para decidir.
+
+Horários dos jogos, regulamentos específicos e disputa de terceiro lugar ficam para etapas posteriores.

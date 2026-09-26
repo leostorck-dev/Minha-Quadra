@@ -1156,6 +1156,7 @@ export type Database = {
           created_by: string
           id: string
           number: number
+          standings_version: number
           tenant_id: string
           tournament_id: string
         }
@@ -1165,6 +1166,7 @@ export type Database = {
           created_by: string
           id?: string
           number: number
+          standings_version?: number
           tenant_id: string
           tournament_id: string
         }
@@ -1174,6 +1176,7 @@ export type Database = {
           created_by?: string
           id?: string
           number?: number
+          standings_version?: number
           tenant_id?: string
           tournament_id?: string
         }
@@ -1387,6 +1390,25 @@ export type Database = {
               "team_b_id",
             ]
             isOneToOne: false
+            referencedRelation: "tournament_qualification"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_matches_tenant_id_tournament_id_category_id_gr_fkey1"
+            columns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_b_id",
+            ]
+            isOneToOne: false
             referencedRelation: "tournament_standings"
             referencedColumns: [
               "tenant_id",
@@ -1407,6 +1429,25 @@ export type Database = {
             ]
             isOneToOne: false
             referencedRelation: "tournament_group_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_matches_tenant_id_tournament_id_category_id_gro_fkey"
+            columns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "group_id",
+              "team_a_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "tournament_qualification"
             referencedColumns: [
               "tenant_id",
               "tournament_id",
@@ -1604,6 +1645,64 @@ export type Database = {
           },
         ]
       }
+      tournament_tiebreaks: {
+        Row: {
+          category_id: string
+          group_id: string
+          id: string
+          invalidated_at: string | null
+          reason: string
+          recorded_at: string
+          recorded_by: string
+          status: string
+          team_ids: string[]
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        Insert: {
+          category_id: string
+          group_id: string
+          id?: string
+          invalidated_at?: string | null
+          reason: string
+          recorded_at?: string
+          recorded_by: string
+          status?: string
+          team_ids: string[]
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        Update: {
+          category_id?: string
+          group_id?: string
+          id?: string
+          invalidated_at?: string | null
+          reason?: string
+          recorded_at?: string
+          recorded_by?: string
+          status?: string
+          team_ids?: string[]
+          tenant_id?: string
+          tournament_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_tiebreaks_tenant_id_tournament_id_category_id_g_fkey"
+            columns: ["tenant_id", "tournament_id", "category_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_groups"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+        ]
+      }
       tournaments: {
         Row: {
           created_at: string
@@ -1693,6 +1792,48 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_qualification: {
+        Row: {
+          category_id: string | null
+          conceded: number | null
+          group_id: string | null
+          played: number | null
+          qualification_rank: number | null
+          rank: number | null
+          scored: number | null
+          team_id: string | null
+          team_label: string | null
+          tenant_id: string | null
+          tournament_id: string | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_group_teams_tenant_id_tournament_id_category_i_fkey1"
+            columns: ["tenant_id", "tournament_id", "category_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_group_teams_tenant_id_tournament_id_category_id_fkey"
+            columns: ["tenant_id", "tournament_id", "category_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_groups"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
           },
         ]
       }
@@ -2138,6 +2279,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "tournament_teams"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      resolve_tournament_tie: {
+        Args: {
+          p_expected_version: number
+          p_group_id: string
+          p_reason: string
+          p_team_ids: string[]
+          p_tournament_id: string
+        }
+        Returns: {
+          category_id: string
+          group_id: string
+          id: string
+          invalidated_at: string | null
+          reason: string
+          recorded_at: string
+          recorded_by: string
+          status: string
+          team_ids: string[]
+          tenant_id: string
+          tournament_id: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournament_tiebreaks"
           isOneToOne: true
           isSetofReturn: false
         }

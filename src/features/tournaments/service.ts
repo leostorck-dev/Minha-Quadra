@@ -2,7 +2,11 @@ import type { AuthContext } from "@/lib/auth/context";
 import { ForbiddenError } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
-import type { TournamentCategoryName, parseResult } from "./validation";
+import type {
+  TournamentCategoryName,
+  parseResult,
+  parseTiebreak,
+} from "./validation";
 
 export type Tournament = Database["public"]["Tables"]["tournaments"]["Row"];
 export type TournamentCategory =
@@ -155,6 +159,7 @@ export async function withdrawTeam(tournamentId: string, teamId: string) {
 }
 
 export type TournamentDraw = {
+  tiebreaks: Database["public"]["Tables"]["tournament_tiebreaks"]["Row"][];
   brackets: Database["public"]["Tables"]["tournament_brackets"]["Row"][];
   knockouts: Database["public"]["Tables"]["tournament_knockout_matches"]["Row"][];
   groups: Database["public"]["Tables"]["tournament_groups"]["Row"][];
@@ -177,52 +182,62 @@ export async function getDraw(
   if (!tournament.data)
     throw new TournamentNotFoundError("Torneio não encontrado.");
   // Per-tournament limits cover six categories of up to 64 teams each.
-  const [groups, entries, matches, brackets, knockouts] = await Promise.all([
-    supabase
-      .from("tournament_groups")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .eq("tournament_id", tournamentId)
-      .order("number")
-      .limit(192),
-    supabase
-      .from("tournament_group_teams")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .eq("tournament_id", tournamentId)
-      .order("position")
-      .limit(384),
-    supabase
-      .from("tournament_matches")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .eq("tournament_id", tournamentId)
-      .order("number")
-      .limit(576),
-    supabase
-      .from("tournament_brackets")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .eq("tournament_id", tournamentId)
-      .limit(6),
-    supabase
-      .from("tournament_knockout_matches")
-      .select("*")
-      .eq("tenant_id", context.tenantId)
-      .eq("tournament_id", tournamentId)
-      .order("round")
-      .order("position")
-      .limit(378),
-  ]);
+  const [groups, entries, matches, brackets, knockouts, tiebreaks] =
+    await Promise.all([
+      supabase
+        .from("tournament_groups")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .order("number")
+        .limit(192),
+      supabase
+        .from("tournament_group_teams")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .order("position")
+        .limit(384),
+      supabase
+        .from("tournament_matches")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .order("number")
+        .limit(576),
+      supabase
+        .from("tournament_brackets")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .limit(6),
+      supabase
+        .from("tournament_knockout_matches")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .order("round")
+        .order("position")
+        .limit(378),
+      supabase
+        .from("tournament_tiebreaks")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .eq("status", "active")
+        .limit(192),
+    ]);
   if (
     groups.error ||
     entries.error ||
     matches.error ||
     brackets.error ||
-    knockouts.error
+    knockouts.error ||
+    tiebreaks.error
   )
     throw new Error("Não foi possível carregar grupos e confrontos.");
   return {
+    tiebreaks: tiebreaks.data ?? [],
     brackets: brackets.data ?? [],
     knockouts: knockouts.data ?? [],
     groups: groups.data ?? [],
@@ -312,5 +327,49 @@ export async function createBracket(
     p_qualifiers: qualifiers,
   });
   check(error, "Não foi possível gerar a chave.");
+  return data;
+}
+
+export async function resolveTie(
+  tournamentId: string,
+  groupId: string,
+  input: ReturnType<typeof parseTiebreak>,
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("resolve_tournament_tie", {
+    p_tournament_id: tournamentId,
+    p_group_id: groupId,
+    p_team_ids: input.teamIds,
+    p_expected_version: input.expectedVersion,
+    p_reason: input.reason,
+  });
+  check(error, "Não foi possível registrar o desempate.");
+  return data;
+}
+
+export async function tiebreakHistory(
+  context: AuthContext,
+  tournamentId: string,
+  groupId: string,
+) {
+  const supabase = await createClient();
+  const group = await supabase
+    .from("tournament_groups")
+    .select("id")
+    .eq("tenant_id", context.tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("id", groupId)
+    .maybeSingle();
+  check(group.error, "Não foi possível consultar o grupo.");
+  if (!group.data) throw new TournamentNotFoundError("Grupo não encontrado.");
+  const { data, error } = await supabase
+    .from("tournament_tiebreaks")
+    .select("*")
+    .eq("tenant_id", context.tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("group_id", groupId)
+    .order("version", { ascending: false })
+    .limit(50);
+  check(error, "Não foi possível consultar o histórico.");
   return data;
 }

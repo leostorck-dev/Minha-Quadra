@@ -118,6 +118,32 @@ export function parseBracket(value: unknown) {
   return { categoryId: uuid(data.categoryId), qualifiers: data.qualifiers };
 }
 
+export function parseTiebreak(value: unknown) {
+  const data = record(value, ["teamIds", "expectedVersion", "reason"]);
+  if (
+    !Array.isArray(data.teamIds) ||
+    data.teamIds.length < 2 ||
+    data.teamIds.length > 4
+  )
+    throw new ValidationError("Informe todas as duplas do grupo.");
+  const teamIds = data.teamIds.map(uuid);
+  if (new Set(teamIds).size !== teamIds.length)
+    throw new ValidationError("Não repita duplas no desempate.");
+  if (
+    typeof data.expectedVersion !== "number" ||
+    !Number.isInteger(data.expectedVersion) ||
+    data.expectedVersion < 0 ||
+    data.expectedVersion > 2147483646
+  )
+    throw new ValidationError("Versão da classificação inválida.");
+  const reason = typeof data.reason === "string" ? data.reason.trim() : "";
+  if (reason.length < 3 || reason.length > 200)
+    throw new ValidationError(
+      "Informe uma justificativa de 3 a 200 caracteres.",
+    );
+  return { teamIds, expectedVersion: data.expectedVersion, reason };
+}
+
 export function parseResult(value: unknown) {
   const data = record(value, ["scoreA", "scoreB", "expectedVersion", "reason"]);
   const score = (v: unknown): number | null => {

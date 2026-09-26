@@ -9,6 +9,13 @@
 Respostas de erro seguem `{error: {code, message}}`. O navegador não envia `tenant_id`.
 # Sorteio
 
+## Desempates
+
+- `POST /api/tournaments/:id/groups/:groupId/tiebreak`: gestores enviam `{ "teamIds": ["uuid", "uuid"], "expectedVersion": 3, "reason": "Critério aplicado conforme regulamento" }`. A lista contém todas as duplas do grupo na ordem desejada. Retorna 201 com a decisão.
+- `GET` no mesmo endereço: últimas 50 decisões, incluindo substituídas e invalidadas, para equipe administrativa.
+- `GET /api/tournaments/:id/draw` inclui decisões vigentes em `tiebreaks` e `standings_version` nos grupos.
+- Corpo inválido: 400; papel sem permissão: 403; grupo de outra arena/inexistente: 404; jogos pendentes, ausência de empate, versão antiga, ordem que desrespeita critérios ou chave existente: 409.
+
 ## Eliminatórias
 
 - `POST /api/tournaments/:id/bracket`: proprietário/gerente envia `{ "categoryId": "uuid", "qualifiers": 2 }`, com 1 ou 2 classificadas por grupo. Retorna 201 com quantidade de classificadas. Partidas pendentes, empate no corte, menos de duas classificadas ou chave existente retornam 409.

@@ -6,7 +6,17 @@ type Match = {
   score_b: number | null;
 };
 
-export function groupStandings(entries: Entry[], matches: Match[]) {
+export function groupStandings(
+  entries: Entry[],
+  matches: Match[],
+  tiebreakOrder?: string[],
+) {
+  const resolved =
+    !!tiebreakOrder &&
+    tiebreakOrder.length === entries.length &&
+    new Set(tiebreakOrder).size === entries.length &&
+    entries.every((e) => tiebreakOrder.includes(e.team_id)) &&
+    matches.every((m) => m.score_a !== null && m.score_b !== null);
   const rows = entries.map((entry) => ({
     teamId: entry.team_id,
     label: entry.team_label,
@@ -43,12 +53,16 @@ export function groupStandings(entries: Entry[], matches: Match[]) {
       b.wins - a.wins ||
       b.difference - a.difference ||
       b.scored - a.scored ||
+      (resolved
+        ? tiebreakOrder!.indexOf(a.teamId) - tiebreakOrder!.indexOf(b.teamId)
+        : 0) ||
       a.teamId.localeCompare(b.teamId),
   );
   for (let i = 0; i < rows.length; i++) {
     const previous = rows[i - 1],
       row = rows[i];
     row.rank =
+      !resolved &&
       previous &&
       row.wins === previous.wins &&
       row.difference === previous.difference &&

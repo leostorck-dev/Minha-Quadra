@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { groupStandings } from "../src/features/tournaments/standings.ts";
-import { parseResult } from "../src/features/tournaments/validation.ts";
+import {
+  parseResult,
+  parseTiebreak,
+} from "../src/features/tournaments/validation.ts";
 const entries = ["a", "b", "c"].map((team_id) => ({
   team_id,
   team_label: team_id,
@@ -92,4 +95,55 @@ test("pontos marcados desempata saldo igual", () => {
     rows.map((r) => r.rank),
     [1, 2, 3],
   );
+});
+
+test("desempate manual resolve somente igualdade e mantém números dos jogos", () => {
+  const matches = [
+    match("a", "b", 6, 4),
+    match("b", "c", 6, 4),
+    match("c", "a", 6, 4),
+  ];
+  const rows = groupStandings(entries, matches, ["c", "a", "b"]);
+  assert.deepEqual(
+    rows.map((r) => [r.teamId, r.rank, r.wins, r.scored]),
+    [
+      ["c", 1, 1, 10],
+      ["a", 2, 1, 10],
+      ["b", 3, 1, 10],
+    ],
+  );
+  assert.deepEqual(
+    groupStandings(entries, matches, ["c", "c", "a"]).map((r) => r.rank),
+    [1, 1, 1],
+  );
+  const distinct = groupStandings(
+    entries,
+    [match("a", "b", 6, 0), match("a", "c", 6, 0), match("b", "c", 6, 0)],
+    ["c", "b", "a"],
+  );
+  assert.deepEqual(
+    distinct.map((r) => r.teamId),
+    ["a", "b", "c"],
+  );
+});
+
+test("desempate exige lista única, versão e motivo", () => {
+  const a = "a9393939-aaaa-4939-8939-393939393931",
+    b = "b9393939-bbbb-4939-8939-393939393932";
+  const valid = {
+    teamIds: [a, b],
+    expectedVersion: 3,
+    reason: " Sorteio previsto no regulamento ",
+  };
+  assert.equal(parseTiebreak(valid).reason, "Sorteio previsto no regulamento");
+  for (const bad of [
+    { teamIds: [a, a] },
+    { teamIds: [a] },
+    { teamIds: [a, "bad"] },
+    { expectedVersion: -1 },
+    { expectedVersion: 2.5 },
+    { reason: "" },
+    { tenantId: a },
+  ])
+    assert.throws(() => parseTiebreak({ ...valid, ...bad }));
 });

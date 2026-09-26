@@ -9,6 +9,14 @@
 - Professor e outra arena não veem nem alteram torneios privados.
 # Grupos e confrontos
 
+## Desempate manual
+
+- Gestor ordena duplas empatadas e justifica; a classificação muda sem alterar estatísticas e a chave recebe as classificadas corretas.
+- Reordenar duplas não empatadas, repetir duplas, decidir com jogos pendentes, usar versão antiga ou decidir após gerar chave deve falhar.
+- Substituição preserva histórico. Corrigir um placar invalida a decisão; a nova decisão usa a nova versão do grupo.
+- Recepção consulta e não decide; outra arena não consulta/decide; exclusão direta do histórico é negada.
+- `tests/tournament-tiebreaks.database.sql` valida o fluxo com um líder isolado e três duplas empatadas, em uma transação revertida ao final.
+
 ## Eliminatórias
 
 - Gestor classifica 1 ou 2 duplas por grupo após concluir os resultados e gera chave única.
