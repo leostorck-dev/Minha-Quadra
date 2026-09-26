@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { saveAndRefresh } from "@/lib/api/save-and-refresh";
+import { useEffect, useRef, useState } from "react";
 import type { ClassSession } from "@/features/classes/service";
 import type { ClassPayment } from "@/features/class-payments/service";
 import {
@@ -58,6 +59,9 @@ export function ClassPaymentPanel({
   const [method, setMethod] = useState<PaymentMethod>("PIX");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [refreshRequired, setRefreshRequired] = useState(false);
+  const [notice, setNotice] = useState("");
+  const sending = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,7 +91,28 @@ export function ClassPaymentPanel({
     return () => controller.abort();
   }, [classSession.id]);
 
+  async function refresh() {
+    setDetails(await request(classSession.id));
+    await onChanged();
+    setRefreshRequired(false);
+  }
+  async function retryLoad() {
+    if (sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await refresh();
+    } catch {
+      setError("Não foi possível atualizar os dados. Tente novamente.");
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  }
+
   async function submit(action: "pay" | "refund") {
+    if (sending.current || busy || refreshRequired) return;
     if (
       action === "refund" &&
       !window.confirm(
@@ -95,21 +120,31 @@ export function ClassPaymentPanel({
       )
     )
       return;
+    sending.current = true;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      await request(
-        classSession.id,
-        action === "pay" ? "POST" : "PATCH",
-        action === "pay" ? { method } : { status: "refunded" },
-      );
-      setDetails(await request(classSession.id));
-      await onChanged();
+      const result = await saveAndRefresh(async () => {
+        await request(
+          classSession.id,
+          action === "pay" ? "POST" : "PATCH",
+          action === "pay" ? { method } : { status: "refunded" },
+        );
+      }, refresh);
+      setNotice("Operação registrada com sucesso.");
+      if (!result.refreshed) {
+        setRefreshRequired(true);
+        setError(
+          "A operação foi concluída. Atualize os dados antes de continuar; não é necessário registrar novamente.",
+        );
+      }
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Falha ao salvar o pagamento.",
       );
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -126,6 +161,7 @@ export function ClassPaymentPanel({
           <h2 className="text-xl font-bold">Pagamento da aula</h2>
           <button
             type="button"
+            disabled={busy}
             onClick={onClose}
             aria-label="Fechar"
             className="text-2xl text-slate-400 hover:text-white"
@@ -137,6 +173,21 @@ export function ClassPaymentPanel({
           Registre aqui apenas uma cobrança avulsa da sessão. Mensalidades são
           lançadas separadamente.
         </p>
+        {notice && (
+          <p role="status" className="mt-4 text-sm text-lime-300">
+            {notice}
+          </p>
+        )}
+        {(refreshRequired || (!details && error)) && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void retryLoad()}
+            className="mt-3 rounded-lg border border-white/20 px-3 py-2 text-sm disabled:opacity-50"
+          >
+            Atualizar dados
+          </button>
+        )}
         {error && (
           <p role="alert" className="mt-4 text-sm text-rose-300">
             {error}
@@ -201,7 +252,7 @@ export function ClassPaymentPanel({
                 </label>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || refreshRequired}
                   onClick={() => void submit("pay")}
                   className="rounded-lg bg-lime-400 px-4 py-2 font-semibold text-slate-950 disabled:opacity-50"
                 >
@@ -212,7 +263,7 @@ export function ClassPaymentPanel({
             {details.situation === "paid" && (
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || refreshRequired}
                 onClick={() => void submit("refund")}
                 className="mt-5 rounded-lg border border-rose-500/40 px-4 py-2 text-sm text-rose-300 disabled:opacity-50"
               >

@@ -48,3 +48,20 @@ test("successful mutation refreshes only after saving", async () => {
   );
   assert.deepEqual(calls, ["save", "refresh"]);
 });
+
+import { saveAndRefresh as saveClassAndRefresh } from "../src/lib/api/save-and-refresh.ts";
+test("recuperação de aula ou comissão repete apenas leitura após gravação confirmada", async () => {
+  let writes = 0,
+    reads = 0;
+  const refresh = async () => {
+    reads++;
+    if (reads === 1) throw Error("Offline");
+  };
+  const result = await saveClassAndRefresh(async () => {
+    writes++;
+  }, refresh);
+  assert.equal(result.refreshed, false);
+  await refresh();
+  assert.equal(writes, 1);
+  assert.equal(reads, 2);
+});

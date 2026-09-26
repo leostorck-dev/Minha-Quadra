@@ -1,5 +1,6 @@
 "use client";
 
+import { saveAndRefresh } from "@/lib/api/save-and-refresh";
 import { Temporal } from "@js-temporal/polyfill";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Role } from "@/lib/auth/context";
@@ -223,6 +224,7 @@ function ClassCard({
         (item.status !== "cancelled" || payment) && (
           <button
             type="button"
+            disabled={busy}
             onClick={() => setPaymentOpen(true)}
             className="mt-4 rounded-lg border border-white/20 px-3 py-2 text-sm"
           >
@@ -243,6 +245,7 @@ function ClassCard({
         role !== "RECEPTIONIST" && (
           <button
             type="button"
+            disabled={busy}
             onClick={() => setCommissionOpen(true)}
             className="mt-4 ml-2 rounded-lg border border-white/20 px-3 py-2 text-sm"
           >
@@ -283,7 +286,11 @@ export function ClassesView({
   const [data, setData] = useState<ClassOverview | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [saving, setBusy] = useState(false);
+  const [refreshRequired, setRefreshRequired] = useState(false);
+  const busy = saving || refreshRequired;
+  const actionPending = useRef(false);
+  const loadVersion = useRef(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -319,17 +326,19 @@ export function ClassesView({
 
   useEffect(() => {
     let active = true;
+    const version = ++loadVersion.current;
     currentUrl.current = url;
     void api(url)
       .then((body: ClassOverview) => {
-        if (!active) return;
+        if (!active || version !== loadVersion.current) return;
         setData(body);
+        setRefreshRequired(false);
         setLoadedUrl(url);
         setFailedUrl("");
         setError("");
       })
       .catch((cause: unknown) => {
-        if (!active) return;
+        if (!active || version !== loadVersion.current) return;
         setFailedUrl(url);
         setError(
           cause instanceof Error ? cause.message : "Falha ao carregar aulas.",
@@ -345,23 +354,36 @@ export function ClassesView({
   }, []);
 
   async function run(action: () => Promise<unknown>, message: string) {
+    if (actionPending.current || busy || loading || failedUrl === url)
+      return false;
+    actionPending.current = true;
+    loadVersion.current += 1;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await action();
-      const refreshed = await api(url);
-      if (currentUrl.current === url) {
-        setData(refreshed);
-        setLoadedUrl(url);
-        setFailedUrl("");
-      }
+      const result = await saveAndRefresh(action, async () => {
+        const refreshed = await api(url);
+        if (currentUrl.current === url) {
+          setData(refreshed);
+          setLoadedUrl(url);
+          setFailedUrl("");
+          setRefreshRequired(false);
+        }
+      });
       setNotice(message);
+      if (!result.refreshed) {
+        setRefreshRequired(true);
+        setError(
+          "A operação foi concluída, mas a tela não foi atualizada. Atualize os dados antes de registrar outra alteração.",
+        );
+      }
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Falha na operação.");
       return false;
     } finally {
+      actionPending.current = false;
       setBusy(false);
     }
   }
@@ -485,16 +507,18 @@ export function ClassesView({
           {notice}
         </p>
       )}
-      {failedUrl === url && (
+      {(failedUrl === url || refreshRequired) && (
         <button
           type="button"
-          className="rounded-lg border border-white/20 px-4 py-2"
+          disabled={saving || loading}
+          className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-50"
           onClick={() => {
             setFailedUrl("");
+            setLoadedUrl("");
             setRetry((value) => value + 1);
           }}
         >
-          Tentar carregar novamente
+          Atualizar dados
         </button>
       )}
       {!data ? (

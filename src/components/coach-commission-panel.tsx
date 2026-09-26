@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { saveAndRefresh } from "@/lib/api/save-and-refresh";
+import { useEffect, useRef, useState } from "react";
 import type { ClassSession } from "@/features/classes/service";
 import type {
   CoachCommissionPayout,
@@ -54,6 +55,9 @@ export function CoachCommissionPanel({
   const [details, setDetails] = useState<Details | null>(null);
   const [method, setMethod] = useState<CoachPayoutMethod>("pix");
   const [busy, setBusy] = useState(false);
+  const [refreshRequired, setRefreshRequired] = useState(false);
+  const [notice, setNotice] = useState("");
+  const sending = useRef(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -71,36 +75,67 @@ export function CoachCommissionPanel({
     return () => controller.abort();
   }, [classSession.id]);
 
+  async function refresh() {
+    setDetails(await load(classSession.id));
+    await onChanged();
+    setRefreshRequired(false);
+  }
+  async function retryLoad() {
+    if (sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await refresh();
+    } catch {
+      setError("Não foi possível atualizar os dados. Tente novamente.");
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  }
+
   async function submit() {
+    if (sending.current || busy || refreshRequired) return;
     if (
       !window.confirm(
         `Confirmar que ${money.format(details?.amount ?? 0)} já foram pagos a ${coachName} fora do sistema?`,
       )
     )
       return;
+    sending.current = true;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      const response = await fetch(
-        `/api/classes/${classSession.id}/commission`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ method }),
-        },
-      );
-      const body = (await response.json()) as { error?: { message: string } };
-      if (!response.ok)
-        throw new Error(
-          body.error?.message ?? "Não foi possível liquidar a comissão.",
+      const result = await saveAndRefresh(async () => {
+        const response = await fetch(
+          `/api/classes/${classSession.id}/commission`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ method }),
+          },
         );
-      setDetails(await load(classSession.id));
-      await onChanged();
+        const body = (await response.json()) as { error?: { message: string } };
+        if (!response.ok)
+          throw new Error(
+            body.error?.message ?? "Não foi possível liquidar a comissão.",
+          );
+      }, refresh);
+      setNotice("Operação registrada com sucesso.");
+      if (!result.refreshed) {
+        setRefreshRequired(true);
+        setError(
+          "A operação foi concluída. Atualize os dados antes de continuar; não é necessário registrar novamente.",
+        );
+      }
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Falha ao liquidar comissão.",
       );
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -120,6 +155,7 @@ export function CoachCommissionPanel({
           </div>
           <button
             type="button"
+            disabled={busy}
             onClick={onClose}
             aria-label="Fechar"
             className="text-2xl text-slate-400 hover:text-white"
@@ -127,6 +163,21 @@ export function CoachCommissionPanel({
             ×
           </button>
         </div>
+        {notice && (
+          <p role="status" className="mt-4 text-sm text-lime-300">
+            {notice}
+          </p>
+        )}
+        {(refreshRequired || (!details && error)) && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void retryLoad()}
+            className="mt-3 rounded-lg border border-white/20 px-3 py-2 text-sm disabled:opacity-50"
+          >
+            Atualizar dados
+          </button>
+        )}
         {error && (
           <p role="alert" className="mt-4 text-sm text-rose-300">
             {error}
@@ -186,7 +237,7 @@ export function CoachCommissionPanel({
                   </label>
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || refreshRequired}
                     onClick={() => void submit()}
                     className="rounded-lg bg-lime-400 px-4 py-2 font-semibold text-slate-950 disabled:opacity-50"
                   >
