@@ -33,6 +33,8 @@ Em `/classes`, a equipe agenda aulas, registra presença e acompanha professores
 
 Na mesma página, proprietário e gerente podem registrar a comissão paga de cada aula concluída. A liquidação usa a regra congelada quando a aula foi agendada e lança uma despesa no financeiro. O professor pode consultar as próprias comissões.
 
+Em `/tournaments`, proprietário e gerente criam torneios com categorias e controlam a abertura das inscrições. A equipe cadastra ou retira duplas de clientes, com bloqueio de inscrições repetidas na mesma categoria. Grupos, confrontos e resultados ficam para as próximas etapas.
+
 ## Comandos
 
 - `npm run dev`: servidor de desenvolvimento.

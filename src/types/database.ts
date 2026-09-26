@@ -1020,6 +1020,198 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_categories: {
+        Row: {
+          id: string
+          name: string
+          tenant_id: string
+          tournament_id: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          tenant_id: string
+          tournament_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          tenant_id?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_categories_tournament_fk"
+            columns: ["tenant_id", "tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      tournament_team_members: {
+        Row: {
+          active: boolean
+          category_id: string
+          customer_id: string
+          position: number
+          team_id: string
+          tenant_id: string
+          tournament_id: string
+        }
+        Insert: {
+          active?: boolean
+          category_id: string
+          customer_id: string
+          position: number
+          team_id: string
+          tenant_id: string
+          tournament_id: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string
+          customer_id?: string
+          position?: number
+          team_id?: string
+          tenant_id?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_members_customer_fk"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_crm"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "tournament_members_customer_fk"
+            columns: ["tenant_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "tournament_members_team_fk"
+            columns: ["tenant_id", "tournament_id", "category_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_teams"
+            referencedColumns: [
+              "tenant_id",
+              "tournament_id",
+              "category_id",
+              "id",
+            ]
+          },
+          {
+            foreignKeyName: "tournament_team_members_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_teams: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string
+          id: string
+          status: string
+          tenant_id: string
+          tournament_id: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          status?: string
+          tenant_id: string
+          tournament_id: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          status?: string
+          tenant_id?: string
+          tournament_id?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_teams_category_fk"
+            columns: ["tenant_id", "tournament_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_categories"
+            referencedColumns: ["tenant_id", "tournament_id", "id"]
+          },
+          {
+            foreignKeyName: "tournament_teams_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          created_at: string
+          created_by: string
+          ends_on: string
+          id: string
+          name: string
+          starts_on: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ends_on: string
+          id?: string
+          name: string
+          starts_on: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ends_on?: string
+          id?: string
+          name?: string
+          starts_on?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       customer_crm: {
@@ -1207,6 +1399,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_tournament: {
+        Args: {
+          p_categories: string[]
+          p_ends_on: string
+          p_name: string
+          p_starts_on: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          ends_on: string
+          id: string
+          name: string
+          starts_on: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournaments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       dashboard_overview: { Args: never; Returns: Json }
       enroll_customer_membership: {
         Args: { p_customer_id: string; p_plan_id: string; p_start_on: string }
@@ -1353,6 +1569,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      register_tournament_team: {
+        Args: {
+          p_category_id: string
+          p_customer_ids: string[]
+          p_tournament_id: string
+        }
+        Returns: {
+          category_id: string
+          created_at: string
+          created_by: string
+          id: string
+          status: string
+          tenant_id: string
+          tournament_id: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournament_teams"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_coach_status: {
         Args: { p_id: string; p_status: string }
         Returns: {
@@ -1391,6 +1631,45 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "membership_plans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_tournament_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          ends_on: string
+          id: string
+          name: string
+          starts_on: string
+          status: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournaments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      withdraw_tournament_team: {
+        Args: { p_team_id: string; p_tournament_id: string }
+        Returns: {
+          category_id: string
+          created_at: string
+          created_by: string
+          id: string
+          status: string
+          tenant_id: string
+          tournament_id: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournament_teams"
           isOneToOne: true
           isSetofReturn: false
         }

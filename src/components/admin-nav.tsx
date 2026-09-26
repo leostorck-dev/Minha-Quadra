@@ -10,6 +10,7 @@ export function AdminNav({ role }: { role: Role }) {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/agenda", label: "Agenda" },
     { href: "/classes", label: "Aulas" },
+    ...(role === "COACH" ? [] : [{ href: "/tournaments", label: "Torneios" }]),
     ...(role === "COACH" ? [] : [{ href: "/customers", label: "Clientes" }]),
     { href: "/courts", label: "Quadras" },
     ...(["OWNER", "MANAGER"].includes(role)

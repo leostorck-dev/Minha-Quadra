@@ -10,6 +10,10 @@ import { PaymentConflictError } from "@/features/payments/service";
 import { ClassPaymentConflictError } from "@/features/class-payments/service";
 import { CoachCommissionConflictError } from "@/features/coach-commissions/service";
 import {
+  TournamentConflictError,
+  TournamentNotFoundError,
+} from "@/features/tournaments/service";
+import {
   FinancialConflictError,
   FinancialNotFoundError,
 } from "@/features/finance/service";
@@ -30,6 +34,12 @@ export function privateJson(data: unknown, status = 200) {
 }
 
 export function apiError(error: unknown) {
+  if (error instanceof TournamentConflictError) {
+    return privateJson(
+      { error: { code: "TOURNAMENT_CONFLICT", message: error.message } },
+      409,
+    );
+  }
   if (error instanceof CoachCommissionConflictError) {
     return privateJson(
       { error: { code: "COACH_COMMISSION_CONFLICT", message: error.message } },
@@ -102,7 +112,8 @@ export function apiError(error: unknown) {
     error instanceof ReservationNotFoundError ||
     error instanceof FinancialNotFoundError ||
     error instanceof MembershipNotFoundError ||
-    error instanceof ClassNotFoundError
+    error instanceof ClassNotFoundError ||
+    error instanceof TournamentNotFoundError
   ) {
     return privateJson(
       { error: { code: "NOT_FOUND", message: error.message } },
