@@ -25,7 +25,9 @@ function record(value: unknown, keys: string[]): Record<string, unknown> {
 export function uuid(value: unknown): string {
   if (
     typeof value !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    )
   ) {
     throw new ValidationError("Identificador inválido.");
   }
@@ -100,4 +102,11 @@ export function parseWithdraw(value: unknown) {
   const data = record(value, ["status"]);
   if (data.status !== "withdrawn")
     throw new ValidationError("Situação da dupla inválida.");
+}
+
+export function parseDraw(value: unknown) {
+  const data = record(value, ["categoryId", "groupSize"]);
+  if (data.groupSize !== 3 && data.groupSize !== 4)
+    throw new ValidationError("Escolha grupos de até 3 ou 4 duplas.");
+  return { categoryId: uuid(data.categoryId), groupSize: data.groupSize };
 }

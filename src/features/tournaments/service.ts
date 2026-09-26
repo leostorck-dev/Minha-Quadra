@@ -153,3 +153,71 @@ export async function withdrawTeam(tournamentId: string, teamId: string) {
   check(error, "Não foi possível retirar a dupla.");
   return data;
 }
+
+export type TournamentDraw = {
+  groups: Database["public"]["Tables"]["tournament_groups"]["Row"][];
+  entries: Database["public"]["Tables"]["tournament_group_teams"]["Row"][];
+  matches: Database["public"]["Tables"]["tournament_matches"]["Row"][];
+};
+
+export async function getDraw(
+  context: AuthContext,
+  tournamentId: string,
+): Promise<TournamentDraw> {
+  const supabase = await createClient();
+  const tournament = await supabase
+    .from("tournaments")
+    .select("id")
+    .eq("tenant_id", context.tenantId)
+    .eq("id", tournamentId)
+    .maybeSingle();
+  check(tournament.error, "Não foi possível carregar o torneio.");
+  if (!tournament.data)
+    throw new TournamentNotFoundError("Torneio não encontrado.");
+  // Per-tournament limits cover six categories of up to 64 teams each.
+  const [groups, entries, matches] = await Promise.all([
+    supabase
+      .from("tournament_groups")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .order("number")
+      .limit(192),
+    supabase
+      .from("tournament_group_teams")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .order("position")
+      .limit(384),
+    supabase
+      .from("tournament_matches")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .order("number")
+      .limit(576),
+  ]);
+  if (groups.error || entries.error || matches.error)
+    throw new Error("Não foi possível carregar grupos e confrontos.");
+  return {
+    groups: groups.data ?? [],
+    entries: entries.data ?? [],
+    matches: matches.data ?? [],
+  };
+}
+
+export async function drawCategory(
+  tournamentId: string,
+  categoryId: string,
+  groupSize: number,
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("draw_tournament_category", {
+    p_tournament_id: tournamentId,
+    p_category_id: categoryId,
+    p_group_size: groupSize,
+  });
+  check(error, "Não foi possível sortear a categoria.");
+  return data;
+}

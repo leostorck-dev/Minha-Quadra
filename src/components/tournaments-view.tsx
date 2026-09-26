@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TournamentDrawPanel } from "@/components/tournament-draw-panel";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Role } from "@/lib/auth/context";
 import type { TournamentOverview } from "@/features/tournaments/service";
@@ -342,6 +343,9 @@ export function TournamentsView({
                       type="button"
                       disabled={
                         busy ||
+                        selectedCategories.some(
+                          (category) => category.drawn_at,
+                        ) ||
                         (selected.status !== "open" &&
                           selected.starts_on < today)
                       }
@@ -472,6 +476,17 @@ export function TournamentsView({
                     )}
                   </div>
                 )}
+
+                <TournamentDrawPanel
+                  key={selected.id}
+                  tournamentId={selected.id}
+                  categories={selectedCategories}
+                  closed={selected.status === "closed"}
+                  canManage={canManage}
+                  onDrawn={async () => {
+                    setData(await api("/api/tournaments"));
+                  }}
+                />
 
                 <div className="mt-6 border-t border-white/10 pt-5">
                   <h3 className="font-semibold">Duplas</h3>
