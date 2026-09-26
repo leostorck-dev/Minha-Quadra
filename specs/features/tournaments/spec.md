@@ -43,3 +43,9 @@ A equipe administrativa pode baixar três relatórios CSV por torneio: classific
 Arquivos usam UTF-8 com BOM e separador ponto e vírgula para importação no Excel. Textos são escapados e entradas que possam ser interpretadas como fórmulas são neutralizadas. A exportação exige sessão e permissão da arena e não inclui contatos dos atletas. Os arquivos representam os dados consultados no momento da exportação; baixe novamente após corrigir resultados.
 
 Horários dos jogos e regulamentos específicos ficam para etapas posteriores.
+
+## Consulta e volume de inscrições
+
+A lista de torneios tem busca por nome, filtro de situação e páginas de 20 itens, incluindo eventos antigos. Ao selecionar um torneio, carregam-se suas categorias e todo o histórico de duplas, inclusive retiradas, com os nomes dos integrantes. As inscrições de outros eventos não consomem esse carregamento.
+
+A inscrição usa busca paginada de clientes ativos, sem depender dos primeiros mil cadastros. Cada atleta selecionado permanece identificado pelo nome; a mesma pessoa não pode ocupar as duas posições. A consulta não inclui contatos pessoais. Falhas de carregamento são exibidas com opção de tentar novamente.

@@ -1,12 +1,14 @@
 # API
 
-- `GET /api/tournaments`: torneios, categorias, duplas, integrantes e clientes ativos da arena.
+- `GET /api/tournaments?q=&status=all&page=1&selectedId=uuid`: lista paginada de 20 torneios (`tournaments`, `count`, `page`, `pageSize`), `selected` e suas categorias, duplas, integrantes e nomes de clientes. `selectedId` é opcional; sem ele, seleciona o primeiro evento da página. Situações aceitas: `all`, `draft`, `open`, `closed`. Busca limitada a 80 caracteres e páginas de 1 a 10.000. Seleção inexistente ou de outra arena retorna 404.
+- `GET /api/tournaments/athletes?q=&page=1`: clientes ativos da arena em páginas de 20; retorna `athletes` (id e nome), `count`, `page`, `pageSize`. Ambas as consultas exigem proprietário, gerente ou recepção e usam cache privado desabilitado.
 - `POST /api/tournaments`: `{name, startsOn, endsOn, categories}`. Proprietário ou gerente.
 - `PATCH /api/tournaments/[id]`: `{status: "open" | "closed"}`. Proprietário ou gerente.
 - `POST /api/tournaments/[id]/teams`: `{categoryId, customerIds: [id, id]}`. Proprietário, gerente ou recepção.
 - `PATCH /api/tournaments/[id]/teams/[teamId]`: `{status: "withdrawn"}`. Proprietário, gerente ou recepção.
 
 Respostas de erro seguem `{error: {code, message}}`. O navegador não envia `tenant_id`.
+
 # Sorteio
 
 ## Exportação

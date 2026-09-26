@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { TournamentAthletePicker } from "@/components/tournament-athlete-picker";
 import { TournamentDrawPanel } from "@/components/tournament-draw-panel";
 import { TournamentExports } from "@/components/tournament-exports";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Role } from "@/lib/auth/context";
 import type { TournamentOverview } from "@/features/tournaments/service";
 import {
@@ -40,6 +41,23 @@ export function TournamentsView({
 }) {
   const [data, setData] = useState<TournamentOverview | null>(null);
   const [selectedId, setSelectedId] = useState("");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const [loadedUrl, setLoadedUrl] = useState("");
+  const url =
+    "/api/tournaments?" +
+    new URLSearchParams({
+      page: String(page),
+      q: query,
+      status,
+      ...(selectedId ? { selectedId } : {}),
+    });
+  const [retry, setRetry] = useState(0);
+  const [failedUrl, setFailedUrl] = useState("");
+  const currentUrl = useRef(url);
+  const loading = loadedUrl !== url && failedUrl !== url;
   const [name, setName] = useState("");
   const [startsOn, setStartsOn] = useState(today);
   const [endsOn, setEndsOn] = useState(today);
@@ -55,24 +73,29 @@ export function TournamentsView({
 
   useEffect(() => {
     let active = true;
-    void api("/api/tournaments")
+    currentUrl.current = url;
+    void api(url)
       .then((body: TournamentOverview) => {
         if (!active) return;
         setData(body);
-        setSelectedId(body.tournaments[0]?.id ?? "");
+        setLoadedUrl(url);
+        setError("");
+        setFailedUrl("");
       })
       .catch((cause: unknown) => {
-        if (active)
+        if (active) {
+          setFailedUrl(url);
           setError(
             cause instanceof Error
               ? cause.message
               : "Falha ao carregar torneios.",
           );
+        }
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [url, retry]);
 
   async function run(action: () => Promise<unknown>, message: string) {
     setBusy(true);
@@ -80,13 +103,12 @@ export function TournamentsView({
     setNotice("");
     try {
       await action();
-      const refreshed = (await api("/api/tournaments")) as TournamentOverview;
-      setData(refreshed);
-      setSelectedId((current) =>
-        refreshed.tournaments.some((item) => item.id === current)
-          ? current
-          : (refreshed.tournaments[0]?.id ?? ""),
-      );
+      const refreshed = (await api(url)) as TournamentOverview;
+      if (currentUrl.current === url) {
+        setData(refreshed);
+        setLoadedUrl(url);
+        setFailedUrl("");
+      }
       setNotice(message);
       return true;
     } catch (cause) {
@@ -99,6 +121,7 @@ export function TournamentsView({
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     let createdId = "";
     const saved = await run(async () => {
       const body = await api("/api/tournaments", "POST", {
@@ -111,26 +134,35 @@ export function TournamentsView({
     }, "Torneio criado. Abra as inscrições quando estiver pronto.");
     if (saved) {
       setSelectedId(createdId);
+      setAthleteOne("");
+      setAthleteTwo("");
       setCategoryId("");
       setName("");
       setCategories(["Open"]);
     }
   }
 
-  const selected = data?.tournaments.find((item) => item.id === selectedId);
+  const selected = loading || failedUrl === url ? null : data?.selected;
   const selectedCategories =
-    data?.categories.filter((item) => item.tournament_id === selectedId) ?? [];
+    data?.categories.filter((item) => item.tournament_id === selected?.id) ??
+    [];
   const selectedTeams =
-    data?.teams.filter((item) => item.tournament_id === selectedId) ?? [];
-  const activeCustomers =
-    data?.customers.filter((item) => item.status === "active") ?? [];
+    data?.teams.filter((item) => item.tournament_id === selected?.id) ?? [];
   const registrationOpen =
     selected?.status === "open" && selected.starts_on >= today;
   const canManage = role === "OWNER" || role === "MANAGER";
 
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected) return;
+    if (
+      !selected ||
+      busy ||
+      !categoryId ||
+      !athleteOne ||
+      !athleteTwo ||
+      athleteOne === athleteTwo
+    )
+      return;
     const saved = await run(
       () =>
         api(`/api/tournaments/${selected.id}/teams`, "POST", {
@@ -178,6 +210,18 @@ export function TournamentsView({
           {error}
         </p>
       )}
+      {failedUrl === url && (
+        <button
+          type="button"
+          className="rounded-lg border border-white/20 px-4 py-2"
+          onClick={() => {
+            setFailedUrl("");
+            setRetry((value) => value + 1);
+          }}
+        >
+          Tentar carregar novamente
+        </button>
+      )}
       {notice && (
         <p
           role="status"
@@ -187,20 +231,24 @@ export function TournamentsView({
         </p>
       )}
       {!data ? (
-        <p className="text-slate-400">Carregando torneios...</p>
+        <p className="text-slate-400">
+          {failedUrl === url
+            ? "Não foi possível carregar os torneios."
+            : "Carregando torneios..."}
+        </p>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              ["Torneios", data.tournaments.length],
+              ["Torneios encontrados", data.count],
               [
-                "Inscrições abertas",
+                "Abertos nesta página",
                 data.tournaments.filter((item) => item.status === "open")
                   .length,
               ],
               [
-                "Duplas inscritas",
-                data.teams.filter((item) => item.status === "registered")
+                "Duplas no torneio selecionado",
+                selectedTeams.filter((item) => item.status === "registered")
                   .length,
               ],
             ].map(([label, value]) => (
@@ -294,18 +342,78 @@ export function TournamentsView({
           <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
             <section className="rounded-xl border border-white/10 bg-slate-900 p-5">
               <h2 className="text-xl font-bold">Torneios cadastrados</h2>
+              <form
+                className="mt-3 space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (busy) return;
+                  setQuery(search.trim());
+                  setPage(1);
+                  setSelectedId("");
+                  setCategoryId("");
+                  setAthleteOne("");
+                  setAthleteTwo("");
+                }}
+              >
+                <label className="block text-sm">
+                  Buscar torneio
+                  <input
+                    type="search"
+                    maxLength={80}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="mt-1 w-full rounded-lg bg-slate-800 p-2"
+                  />
+                </label>
+                <label className="block text-sm">
+                  Situação
+                  <select
+                    value={status}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setStatus(event.target.value);
+                      setPage(1);
+                      setSelectedId("");
+                      setCategoryId("");
+                      setAthleteOne("");
+                      setAthleteTwo("");
+                    }}
+                    className="mt-1 w-full rounded-lg bg-slate-800 p-2"
+                  >
+                    <option value="all">Todas</option>
+                    <option value="draft">Rascunho</option>
+                    <option value="open">Inscrições abertas</option>
+                    <option value="closed">Fechadas</option>
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-sm disabled:opacity-50"
+                >
+                  Buscar
+                </button>
+              </form>
+              {loading && (
+                <p role="status" className="mt-3 text-sm">
+                  Carregando torneios…
+                </p>
+              )}
               <ul className="mt-4 space-y-2">
                 {data.tournaments.length ? (
                   data.tournaments.map((item) => (
                     <li key={item.id}>
                       <button
                         type="button"
+                        disabled={busy}
                         onClick={() => {
                           setSelectedId(item.id);
                           setCategoryId("");
+                          setAthleteOne("");
+                          setAthleteTwo("");
                         }}
                         className={`w-full rounded-lg p-3 text-left text-sm ${
-                          selectedId === item.id
+                          selected?.id === item.id
                             ? "bg-lime-400 text-slate-950"
                             : "bg-slate-800 text-white hover:bg-slate-700"
                         }`}
@@ -324,10 +432,45 @@ export function TournamentsView({
                   ))
                 ) : (
                   <li className="text-sm text-slate-400">
-                    Nenhum torneio criado.
+                    Nenhum torneio encontrado.
                   </li>
                 )}
               </ul>
+              <div className="mt-4 flex items-center justify-between gap-2 text-sm">
+                <button
+                  type="button"
+                  disabled={busy || loading || page <= 1}
+                  className="disabled:opacity-40"
+                  onClick={() => {
+                    setPage(page - 1);
+                    setSelectedId("");
+                    setCategoryId("");
+                    setAthleteOne("");
+                    setAthleteTwo("");
+                  }}
+                >
+                  Anterior
+                </button>
+                <span>
+                  {page} / {Math.max(1, Math.ceil(data.count / data.pageSize))}
+                </span>
+                <button
+                  type="button"
+                  disabled={
+                    busy || loading || page * data.pageSize >= data.count
+                  }
+                  className="disabled:opacity-40"
+                  onClick={() => {
+                    setPage(page + 1);
+                    setSelectedId("");
+                    setCategoryId("");
+                    setAthleteOne("");
+                    setAthleteTwo("");
+                  }}
+                >
+                  Próxima
+                </button>
+              </div>
             </section>
 
             {selected && (
@@ -397,89 +540,69 @@ export function TournamentsView({
                 {registrationOpen && (
                   <div className="mt-6 border-t border-white/10 pt-5">
                     <h3 className="font-semibold">Inscrever dupla</h3>
-                    {activeCustomers.length < 2 ? (
-                      <p className="mt-2 text-sm text-slate-400">
-                        Cadastre pelo menos dois clientes ativos em{" "}
-                        <Link
-                          href="/customers"
-                          className="text-lime-300 underline"
-                        >
-                          Clientes
-                        </Link>
-                        .
-                      </p>
-                    ) : (
-                      <form
-                        onSubmit={(event) => void register(event)}
-                        className="mt-3 grid gap-3 sm:grid-cols-3"
+                    <p className="mt-2 text-sm text-slate-400">
+                      Busque dois clientes ativos. Novos atletas podem ser
+                      cadastrados em{" "}
+                      <Link
+                        href="/customers"
+                        className="text-lime-300 underline"
                       >
-                        <label className="text-sm">
-                          Categoria
-                          <select
-                            required
-                            value={categoryId}
-                            onChange={(event) =>
-                              setCategoryId(event.target.value)
-                            }
-                            className="mt-1 w-full rounded-lg border border-white/20 bg-slate-800 p-3"
-                          >
-                            <option value="">Selecione</option>
-                            {selectedCategories.map((category) => (
-                              <option key={category.id} value={category.id}>
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="text-sm">
-                          Atleta 1
-                          <select
-                            required
-                            value={athleteOne}
-                            onChange={(event) => {
-                              setAthleteOne(event.target.value);
-                              if (event.target.value === athleteTwo)
-                                setAthleteTwo("");
-                            }}
-                            className="mt-1 w-full rounded-lg border border-white/20 bg-slate-800 p-3"
-                          >
-                            <option value="">Selecione</option>
-                            {activeCustomers.map((customer) => (
-                              <option key={customer.id} value={customer.id}>
-                                {customer.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="text-sm">
-                          Atleta 2
-                          <select
-                            required
-                            value={athleteTwo}
-                            onChange={(event) =>
-                              setAthleteTwo(event.target.value)
-                            }
-                            className="mt-1 w-full rounded-lg border border-white/20 bg-slate-800 p-3"
-                          >
-                            <option value="">Selecione</option>
-                            {activeCustomers
-                              .filter((customer) => customer.id !== athleteOne)
-                              .map((customer) => (
-                                <option key={customer.id} value={customer.id}>
-                                  {customer.name}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                        <button
-                          type="submit"
-                          disabled={busy}
-                          className="w-fit rounded-lg bg-lime-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50 sm:col-span-3"
+                        Clientes
+                      </Link>
+                      .
+                    </p>
+                    <form
+                      onSubmit={(event) => void register(event)}
+                      className="mt-3 grid gap-3 sm:grid-cols-3"
+                    >
+                      <label className="text-sm">
+                        Categoria
+                        <select
+                          required
+                          value={categoryId}
+                          onChange={(event) =>
+                            setCategoryId(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-lg border border-white/20 bg-slate-800 p-3"
                         >
-                          Inscrever dupla
-                        </button>
-                      </form>
-                    )}
+                          <option value="">Selecione</option>
+                          {selectedCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <TournamentAthletePicker
+                        key={selected.id + ":one"}
+                        label="Atleta 1"
+                        value={athleteOne}
+                        excludedId={athleteTwo}
+                        disabled={busy}
+                        onChange={setAthleteOne}
+                      />
+                      <TournamentAthletePicker
+                        key={selected.id + ":two"}
+                        label="Atleta 2"
+                        value={athleteTwo}
+                        excludedId={athleteOne}
+                        disabled={busy}
+                        onChange={setAthleteTwo}
+                      />
+                      <button
+                        type="submit"
+                        disabled={
+                          busy ||
+                          !categoryId ||
+                          !athleteOne ||
+                          !athleteTwo ||
+                          athleteOne === athleteTwo
+                        }
+                        className="w-fit rounded-lg bg-lime-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50 sm:col-span-3"
+                      >
+                        Inscrever dupla
+                      </button>
+                    </form>
                   </div>
                 )}
 
@@ -490,7 +613,8 @@ export function TournamentsView({
                   closed={selected.status === "closed"}
                   canManage={canManage}
                   onDrawn={async () => {
-                    setData(await api("/api/tournaments"));
+                    const refreshed = await api(url);
+                    if (currentUrl.current === url) setData(refreshed);
                   }}
                 />
 

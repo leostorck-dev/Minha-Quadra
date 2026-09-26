@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test tests/customers.validation.test.mjs tests/courts.validation.test.mjs tests/reservations.test.mjs tests/finance.validation.test.mjs tests/memberships.validation.test.mjs tests/classes.validation.test.mjs tests/coach-commissions.amount.test.mjs tests/tournaments.validation.test.mjs tests/tournaments.results.test.mjs tests/tournaments.reports.test.mjs"
+    "test": "node --test tests/customers.validation.test.mjs tests/courts.validation.test.mjs tests/reservations.test.mjs tests/finance.validation.test.mjs tests/memberships.validation.test.mjs tests/classes.validation.test.mjs tests/coach-commissions.amount.test.mjs tests/tournaments.validation.test.mjs tests/tournaments.results.test.mjs tests/tournaments.reports.test.mjs tests/tournaments.pagination.test.mjs"
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",

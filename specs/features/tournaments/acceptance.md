@@ -7,6 +7,7 @@
 - Retirada preserva histórico e libera os atletas para nova inscrição na categoria.
 - Recepção pode inscrever e retirar, mas não cria torneios nem muda a situação de inscrições.
 - Professor e outra arena não veem nem alteram torneios privados.
+
 # Grupos e confrontos
 
 ## Exportação
@@ -55,3 +56,12 @@
 - Repetir o sorteio e reabrir inscrições após sortear devem falhar, inclusive por chamada direta à API/RPC.
 - Recepção consulta, professor não acessa e outra arena não consulta nem modifica.
 - Teste transacional `tests/tournament-draws.database.sql`: 2, 3, 4, 5, 7, 8 e 64 duplas, tamanhos 3/4, retirada, repetição, reabertura, RLS e grants. Toda a massa é revertida com `ROLLBACK`.
+
+## Paginação e busca
+
+- Listar torneios em páginas de 20, buscar por nome e filtrar situação; eventos além do antigo limite de 100 continuam acessíveis.
+- Selecionar um torneio fora da página atual deve retornar seus dados apenas se pertencer à arena autenticada.
+- Carregar todas as duplas do torneio selecionado e os integrantes em lotes; inscrições de outros torneios não ocultam dados. Clientes inativos continuam identificados no histórico.
+- Buscar atletas ativos em páginas de 20; os cadastros além dos primeiros mil devem ser acessíveis. Trocar torneio limpa a categoria e os atletas.
+- Respostas atrasadas não devem substituir os detalhes de outra seleção. Uma falha não deve apresentar resultado parcial como completo.
+- `tests/tournaments.pagination.test.mjs` cobre parâmetros inválidos, busca literal e carregamento de 1.105 registros em páginas menores que o limite solicitado, incluindo falha intermediária e cursor sem avanço.

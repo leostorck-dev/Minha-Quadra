@@ -1,3 +1,8 @@
+import {
+  collectById,
+  literalSearch,
+  type parseTournamentSearch,
+} from "./pagination";
 import type { AuthContext } from "@/lib/auth/context";
 import { ForbiddenError } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
@@ -17,6 +22,10 @@ export type TournamentTeamMember =
   Database["public"]["Tables"]["tournament_team_members"]["Row"];
 export type TournamentOverview = {
   tournaments: Tournament[];
+  selected: Tournament | null;
+  count: number;
+  page: number;
+  pageSize: number;
   categories: TournamentCategory[];
   teams: TournamentTeam[];
   members: TournamentTeamMember[];
@@ -44,62 +53,128 @@ function check(
 
 export async function overview(
   context: AuthContext,
+  options: ReturnType<typeof parseTournamentSearch>,
 ): Promise<TournamentOverview> {
   const supabase = await createClient();
-  const [tournaments, customers] = await Promise.all([
-    supabase
+  const pageSize = 20;
+  const from = (options.page - 1) * pageSize;
+  let query = supabase
+    .from("tournaments")
+    .select("*", { count: "exact" })
+    .eq("tenant_id", context.tenantId);
+  if (options.query)
+    query = query.ilike("name", "%" + literalSearch(options.query) + "%");
+  if (options.status !== "all") query = query.eq("status", options.status);
+  const tournaments = await query
+    .order("starts_on", { ascending: false })
+    .order("id")
+    .range(from, from + pageSize - 1);
+  if (tournaments.error)
+    throw new Error("Não foi possível carregar os torneios.");
+  let selected = tournaments.data?.[0] ?? null;
+  if (options.selectedId) {
+    const result = await supabase
       .from("tournaments")
       .select("*")
       .eq("tenant_id", context.tenantId)
-      .order("starts_on", { ascending: false })
-      .limit(100),
+      .eq("id", options.selectedId)
+      .maybeSingle();
+    if (result.error) throw new Error("Não foi possível carregar o torneio.");
+    if (!result.data)
+      throw new TournamentNotFoundError("Torneio não encontrado.");
+    selected = result.data;
+  }
+  const base = {
+    tournaments: tournaments.data ?? [],
+    selected,
+    count: tournaments.count ?? 0,
+    page: options.page,
+    pageSize,
+  };
+  if (!selected)
+    return { ...base, categories: [], teams: [], members: [], customers: [] };
+  const tournamentId = selected.id;
+  const [categories, teams] = await Promise.all([
     supabase
+      .from("tournament_categories")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .order("name"),
+    collectById<TournamentTeam>((after) => {
+      let page = supabase
+        .from("tournament_teams")
+        .select("*")
+        .eq("tenant_id", context.tenantId)
+        .eq("tournament_id", tournamentId)
+        .order("id")
+        .limit(200);
+      if (after) page = page.gt("id", after);
+      return page;
+    }, "Não foi possível carregar inscrições."),
+  ]);
+  if (categories.error)
+    throw new Error("Não foi possível carregar categorias.");
+  const members: TournamentTeamMember[] = [];
+  for (let offset = 0; offset < teams.length; offset += 100) {
+    const result = await supabase
+      .from("tournament_team_members")
+      .select("*")
+      .eq("tenant_id", context.tenantId)
+      .eq("tournament_id", tournamentId)
+      .in(
+        "team_id",
+        teams.slice(offset, offset + 100).map((team) => team.id),
+      );
+    if (result.error)
+      throw new Error("Não foi possível carregar os atletas inscritos.");
+    members.push(...result.data);
+  }
+  const customerIds = [...new Set(members.map((member) => member.customer_id))];
+  const customers: TournamentOverview["customers"] = [];
+  for (let offset = 0; offset < customerIds.length; offset += 100) {
+    const result = await supabase
       .from("customers")
       .select("id, name, status")
       .eq("tenant_id", context.tenantId)
-      .order("name")
-      .limit(1000),
-  ]);
-  if (tournaments.error || customers.error)
-    throw new Error("Não foi possível carregar os torneios.");
-  const tournamentIds = (tournaments.data ?? []).map((item) => item.id);
-  const [categories, teams] = await Promise.all([
-    tournamentIds.length
-      ? supabase
-          .from("tournament_categories")
-          .select("*")
-          .eq("tenant_id", context.tenantId)
-          .in("tournament_id", tournamentIds)
-      : Promise.resolve({ data: [], error: null }),
-    tournamentIds.length
-      ? supabase
-          .from("tournament_teams")
-          .select("*")
-          .eq("tenant_id", context.tenantId)
-          .in("tournament_id", tournamentIds)
-          .order("created_at", { ascending: false })
-          .limit(500)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-  if (categories.error || teams.error)
-    throw new Error("Não foi possível carregar inscrições.");
-  const teamIds = (teams.data ?? []).map((item) => item.id);
-  const members = teamIds.length
-    ? await supabase
-        .from("tournament_team_members")
-        .select("*")
-        .eq("tenant_id", context.tenantId)
-        .in("team_id", teamIds)
-        .limit(1000)
-    : { data: [], error: null };
-  if (members.error)
-    throw new Error("Não foi possível carregar os atletas inscritos.");
+      .in("id", customerIds.slice(offset, offset + 100));
+    if (result.error)
+      throw new Error("Não foi possível carregar os nomes dos atletas.");
+    customers.push(...result.data);
+  }
   return {
-    tournaments: tournaments.data ?? [],
-    categories: categories.data ?? [],
-    teams: teams.data ?? [],
-    members: members.data ?? [],
-    customers: customers.data ?? [],
+    ...base,
+    categories: categories.data,
+    teams: teams.sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    members,
+    customers,
+  };
+}
+
+export async function searchAthletes(
+  context: AuthContext,
+  options: ReturnType<typeof parseTournamentSearch>,
+) {
+  const supabase = await createClient();
+  const pageSize = 20;
+  const from = (options.page - 1) * pageSize;
+  let query = supabase
+    .from("customers")
+    .select("id, name", { count: "exact" })
+    .eq("tenant_id", context.tenantId)
+    .eq("status", "active");
+  if (options.query)
+    query = query.ilike("name", "%" + literalSearch(options.query) + "%");
+  const result = await query
+    .order("name")
+    .order("id")
+    .range(from, from + pageSize - 1);
+  if (result.error) throw new Error("Não foi possível buscar atletas.");
+  return {
+    athletes: result.data,
+    count: result.count ?? 0,
+    page: options.page,
+    pageSize,
   };
 }
 
