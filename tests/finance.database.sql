@@ -68,6 +68,21 @@ begin
   end;
   if not other_tenant_rejected then raise exception 'Inserção em outra arena foi aceita'; end if;
 
+  -- Contas de meses antigos entram; hoje, futuro, receitas e pagas ficam fora.
+  insert into public.financial_transactions (tenant_id, type, category, description, amount, status, due_date)
+  values
+    ('11111111-aaaa-4111-8111-111111111113','expense','Energia','Vencida antiga',12.34,'pending',month_start - 40),
+    ('11111111-aaaa-4111-8111-111111111113','expense','Energia','Vence hoje',20,'pending',(now() at time zone 'America/Sao_Paulo')::date),
+    ('11111111-aaaa-4111-8111-111111111113','expense','Energia','Futura',30,'pending',(now() at time zone 'America/Sao_Paulo')::date + 1),
+    ('11111111-aaaa-4111-8111-111111111113','income','Outras receitas','Receita antiga',40,'pending',month_start - 40);
+  if (select sum(amount) from public.financial_transactions where type = 'expense' and status = 'pending' and due_date < (now() at time zone 'America/Sao_Paulo')::date) <> 12.34 then
+    raise exception 'Total vencido incluiu contas indevidas ou perdeu meses anteriores';
+  end if;
+  update public.financial_transactions set status = 'cancelled' where description = 'Vencida antiga';
+  if exists(select 1 from public.financial_transactions where type = 'expense' and status = 'pending' and due_date < (now() at time zone 'America/Sao_Paulo')::date) then
+    raise exception 'Conta cancelada permaneceu vencida';
+  end if;
+
   perform set_config('request.jwt.claim.sub', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', true);
   if (select count(*) from public.financial_transactions) <> 0 then
     raise exception 'Recepção leu o financeiro';

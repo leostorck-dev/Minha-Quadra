@@ -1,6 +1,5 @@
-import { financeSearchPattern } from "./validation";
+import { financeSearchPattern, financeWindow } from "./validation";
 import { collectById } from "@/lib/database/pagination";
-import { Temporal } from "@js-temporal/polyfill";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
@@ -70,18 +69,21 @@ export async function listFinancialTransactions(
   options: FinanceList,
 ) {
   const supabase = await createClient();
-  const start = `${options.month}-01`;
-  const end = Temporal.PlainYearMonth.from(options.month)
-    .add({ months: 1 })
-    .toPlainDate({ day: 1 })
-    .toString();
+  const { data: arena, error: arenaError } = await supabase
+    .from("tenants")
+    .select("timezone")
+    .eq("id", context.tenantId)
+    .single();
+  if (arenaError || !arena)
+    throw new Error("Não foi possível carregar o fuso da arena.");
+  const window = financeWindow(options, arena.timezone);
   const pageSize = 25;
   let query = supabase
     .from("financial_transactions")
     .select("*", { count: "exact" })
     .eq("tenant_id", context.tenantId)
-    .gte("activity_on", start)
-    .lt("activity_on", end);
+    .lt(window.column, window.end);
+  if (window.start) query = query.gte(window.column, window.start);
   if (options.type !== "all") query = query.eq("type", options.type);
   if (options.status !== "all") query = query.eq("status", options.status);
   if (options.source !== "all") query = query.eq("source_type", options.source);
@@ -97,7 +99,35 @@ export async function listFinancialTransactions(
         .order("created_at", { ascending: false })
         .order("id")
         .range((options.page - 1) * pageSize, options.page * pageSize - 1),
-      supabase.rpc("finance_month_summary", { p_month: start }),
+      options.scope === "overdue"
+        ? collectById<{ id: string; amount: number }>((after) => {
+            let totals = supabase
+              .from("financial_transactions")
+              .select("id, amount")
+              .eq("tenant_id", context.tenantId)
+              .eq("type", "expense")
+              .eq("status", "pending")
+              .lt("due_date", window.end)
+              .order("id")
+              .limit(200);
+            if (after) totals = totals.gt("id", after);
+            return totals;
+          }, "Não foi possível carregar o total vencido.").then((rows) => ({
+            data: [
+              {
+                income: 0,
+                expense: 0,
+                result: 0,
+                payable:
+                  rows.reduce(
+                    (sum, row) => sum + Math.round(row.amount * 100),
+                    0,
+                  ) / 100,
+              },
+            ],
+            error: null,
+          }))
+        : supabase.rpc("finance_month_summary", { p_month: window.start! }),
     ]);
   if (error || summaryError)
     throw new Error("Não foi possível carregar o financeiro.");
@@ -107,6 +137,7 @@ export async function listFinancialTransactions(
     total: count ?? 0,
     page: options.page,
     pageSize,
+    overdueBefore: options.scope === "overdue" ? window.end : null,
     summary: {
       income: row?.income ?? 0,
       expense: row?.expense ?? 0,
@@ -121,20 +152,23 @@ export async function exportFinancialTransactions(
   options: FinanceList,
 ): Promise<FinancialTransaction[]> {
   const supabase = await createClient();
-  const start = options.month + "-01";
-  const end = Temporal.PlainYearMonth.from(options.month)
-    .add({ months: 1 })
-    .toPlainDate({ day: 1 })
-    .toString();
+  const { data: arena, error: arenaError } = await supabase
+    .from("tenants")
+    .select("timezone")
+    .eq("id", context.tenantId)
+    .single();
+  if (arenaError || !arena)
+    throw new Error("Não foi possível carregar o fuso da arena.");
+  const window = financeWindow(options, arena.timezone);
   const rows = await collectById<TransactionRow>((after) => {
     let query = supabase
       .from("financial_transactions")
       .select("*")
       .eq("tenant_id", context.tenantId)
-      .gte("activity_on", start)
-      .lt("activity_on", end)
+      .lt(window.column, window.end)
       .order("id")
       .limit(200);
+    if (window.start) query = query.gte(window.column, window.start);
     if (options.type !== "all") query = query.eq("type", options.type);
     if (options.status !== "all") query = query.eq("status", options.status);
     if (options.source !== "all")

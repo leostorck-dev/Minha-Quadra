@@ -28,6 +28,7 @@ type FinanceResponse = {
   total: number;
   page: number;
   pageSize: number;
+  overdueBefore: string | null;
   summary: { income: number; expense: number; result: number; payable: number };
 };
 
@@ -218,6 +219,7 @@ export function FinanceView({
   initialMonth: string;
   today: string;
 }) {
+  const [scope, setScope] = useState<"month" | "overdue">("month");
   const [month, setMonth] = useState(initialMonth);
   const [type, setType] = useState<FinanceType | "all">("all");
   const [status, setStatus] = useState<FinanceStatus | "all">("all");
@@ -238,6 +240,7 @@ export function FinanceView({
 
   const requestKey = JSON.stringify([
     month,
+    scope,
     type,
     status,
     source,
@@ -254,6 +257,7 @@ export function FinanceView({
     const controller = new AbortController();
     const params = new URLSearchParams({
       month,
+      scope,
       type,
       status,
       page: String(page),
@@ -289,6 +293,7 @@ export function FinanceView({
     return () => controller.abort();
   }, [
     month,
+    scope,
     type,
     status,
     source,
@@ -328,6 +333,7 @@ export function FinanceView({
         throw new Error(
           body.error?.message ?? "Não foi possível atualizar o lançamento.",
         );
+      setPage(1);
       setReload((value) => value + 1);
     } catch (cause) {
       setActionError(
@@ -341,12 +347,14 @@ export function FinanceView({
   }
 
   const summaryCards = data
-    ? [
-        { label: "Receitas pagas", value: data.summary.income },
-        { label: "Despesas pagas", value: data.summary.expense },
-        { label: "Resultado", value: data.summary.result },
-        { label: "Contas a pagar", value: data.summary.payable },
-      ]
+    ? scope === "overdue"
+      ? [{ label: "Total de contas vencidas", value: data.summary.payable }]
+      : [
+          { label: "Receitas pagas", value: data.summary.income },
+          { label: "Despesas pagas", value: data.summary.expense },
+          { label: "Resultado", value: data.summary.result },
+          { label: "Contas a pagar", value: data.summary.payable },
+        ]
     : [];
 
   return (
@@ -368,67 +376,89 @@ export function FinanceView({
         </button>
       </div>
 
-      <div className="mt-8 flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4">
-        <button
-          type="button"
-          onClick={() => moveMonth(-1)}
-          className="rounded-lg border border-white/15 px-3 py-2 text-sm"
+      <label className="mt-6 block text-sm">
+        Visão
+        <select
+          value={scope}
+          onChange={(event) => {
+            setScope(event.target.value as "month" | "overdue");
+            setPage(1);
+          }}
+          className="ml-3 rounded-lg bg-slate-800 p-2"
         >
-          Anterior
-        </button>
-        <label className="text-xs text-slate-400">
-          Mês
-          <input
-            type="month"
-            value={month}
-            onChange={(event) => {
-              if (event.target.value) {
-                setMonth(event.target.value);
+          <option value="month">Movimentação mensal</option>
+          <option value="overdue">Contas vencidas</option>
+        </select>
+      </label>
+      {scope === "overdue" && (
+        <p className="mt-3 text-sm text-slate-400">
+          Despesas pendentes vencidas, incluindo meses anteriores. Contas que
+          vencem hoje não entram nesta visão.
+        </p>
+      )}
+      {scope === "month" && (
+        <div className="mt-8 flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4">
+          <button
+            type="button"
+            onClick={() => moveMonth(-1)}
+            className="rounded-lg border border-white/15 px-3 py-2 text-sm"
+          >
+            Anterior
+          </button>
+          <label className="text-xs text-slate-400">
+            Mês
+            <input
+              type="month"
+              value={month}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setMonth(event.target.value);
+                  setPage(1);
+                }
+              }}
+              className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => moveMonth(1)}
+            className="rounded-lg border border-white/15 px-3 py-2 text-sm"
+          >
+            Próximo
+          </button>
+          <label className="text-xs text-slate-400">
+            Tipo
+            <select
+              value={type}
+              onChange={(event) => {
+                setType(event.target.value as FinanceType | "all");
                 setPage(1);
-              }
-            }}
-            className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => moveMonth(1)}
-          className="rounded-lg border border-white/15 px-3 py-2 text-sm"
-        >
-          Próximo
-        </button>
-        <label className="text-xs text-slate-400">
-          Tipo
-          <select
-            value={type}
-            onChange={(event) => {
-              setType(event.target.value as FinanceType | "all");
-              setPage(1);
-            }}
-            className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
-          >
-            <option value="all">Todos</option>
-            <option value="income">Receitas</option>
-            <option value="expense">Despesas</option>
-          </select>
-        </label>
-        <label className="text-xs text-slate-400">
-          Situação
-          <select
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as FinanceStatus | "all");
-              setPage(1);
-            }}
-            className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
-          >
-            <option value="all">Todas</option>
-            <option value="pending">Pendentes</option>
-            <option value="paid">Pagas</option>
-            <option value="cancelled">Canceladas</option>
-          </select>
-        </label>
-      </div>
+              }}
+              className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
+            >
+              <option value="all">Todos</option>
+              <option value="income">Receitas</option>
+              <option value="expense">Despesas</option>
+            </select>
+          </label>
+          <label className="text-xs text-slate-400">
+            Situação
+            <select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as FinanceStatus | "all");
+                setPage(1);
+              }}
+              className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
+            >
+              <option value="all">Todas</option>
+              <option value="pending">Pendentes</option>
+              <option value="paid">Pagas</option>
+              <option value="cancelled">Canceladas</option>
+            </select>
+          </label>
+        </div>
+      )}
 
       <form
         className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-slate-900 p-4"
@@ -507,6 +537,7 @@ export function FinanceView({
         </button>
       </form>
       <FinanceExport
+        scope={scope}
         month={month}
         type={type}
         status={status}
@@ -538,7 +569,9 @@ export function FinanceView({
       ) : data ? (
         <>
           <p className="mt-6 text-xs text-slate-400">
-            Resumo de todo o mês, independentemente dos filtros da lista.
+            {scope === "overdue"
+              ? "Total vencido de todos os meses, independentemente dos filtros da lista."
+              : "Resumo de todo o mês, independentemente dos filtros da lista."}
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => (
@@ -568,7 +601,7 @@ export function FinanceView({
                     item.type === "expense" &&
                     item.status === "pending" &&
                     item.dueDate !== null &&
-                    item.dueDate < today;
+                    item.dueDate < (data.overdueBefore ?? today);
                   return (
                     <li
                       key={item.id}
@@ -661,6 +694,13 @@ export function FinanceView({
           onClose={() => setFormOpen(false)}
           onSaved={(transaction) => {
             setFormOpen(false);
+            setScope("month");
+            setType("all");
+            setStatus("all");
+            setSource("all");
+            setCategoryFilter("all");
+            setSearch("");
+            setQuery("");
             setMonth(transaction.activityOn.slice(0, 7));
             setPage(1);
             setReload((value) => value + 1);

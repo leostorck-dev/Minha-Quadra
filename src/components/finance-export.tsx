@@ -8,6 +8,7 @@ import type {
 } from "@/features/finance/validation";
 
 export function FinanceExport({
+  scope,
   month,
   type,
   status,
@@ -15,6 +16,7 @@ export function FinanceExport({
   category,
   query,
 }: {
+  scope: "month" | "overdue";
   month: string;
   type: FinanceType | "all";
   status: FinanceStatus | "all";
@@ -30,6 +32,7 @@ export function FinanceExport({
     setError("");
     try {
       const params = new URLSearchParams({
+        scope,
         month,
         type,
         status,
@@ -49,7 +52,10 @@ export function FinanceExport({
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = `financeiro-${month}-${type}-${status}.csv`;
+      link.download =
+        scope === "overdue"
+          ? "financeiro-contas-vencidas.csv"
+          : `financeiro-${month}-${type}-${status}.csv`;
       document.body.append(link);
       link.click();
       link.remove();

@@ -59,6 +59,7 @@ export type FinanceCreate = {
 
 export type FinanceList = {
   month: string;
+  scope: "month" | "overdue";
   page: number;
   type: FinanceType | "all";
   status: FinanceStatus | "all";
@@ -161,6 +162,9 @@ export function parseFinanceUpdate(value: unknown) {
 }
 
 export function parseFinanceList(params: URLSearchParams): FinanceList {
+  const scope = params.get("scope") ?? "month";
+  if (scope !== "month" && scope !== "overdue")
+    throw new ValidationError("Visão financeira inválida.");
   const month = params.get("month") ?? "";
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
     throw new ValidationError("Informe um mês no formato AAAA-MM.");
@@ -196,11 +200,34 @@ export function parseFinanceList(params: URLSearchParams): FinanceList {
     throw new ValidationError("A busca deve ter até 120 caracteres.");
   return {
     month,
+    scope,
     page,
-    type,
-    status,
+    type: scope === "overdue" ? "expense" : type,
+    status: scope === "overdue" ? "pending" : status,
     source: source as FinanceSource | "all",
     category,
     query,
+  };
+}
+
+export function financeWindow(
+  options: Pick<FinanceList, "month" | "scope">,
+  timezone: string,
+  instant = Temporal.Now.instant(),
+) {
+  if (options.scope === "overdue") {
+    return {
+      column: "due_date" as const,
+      start: null,
+      end: instant.toZonedDateTimeISO(timezone).toPlainDate().toString(),
+    };
+  }
+  return {
+    column: "activity_on" as const,
+    start: options.month + "-01",
+    end: Temporal.PlainYearMonth.from(options.month)
+      .add({ months: 1 })
+      .toPlainDate({ day: 1 })
+      .toString(),
   };
 }

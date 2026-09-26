@@ -74,6 +74,7 @@ test("limita transições e filtros de listagem", () => {
     ),
     {
       month: "2026-09",
+      scope: "month",
       page: 2,
       type: "expense",
       status: "pending",
@@ -118,4 +119,39 @@ test("combina origem, categoria e descrição e rejeita filtros inválidos", () 
       ValidationError,
     );
   }
+});
+
+test("contas vencidas força despesas pendentes e rejeita visão inválida", () => {
+  const options = parseFinanceList(
+    new URLSearchParams("month=2026-09&scope=overdue&type=income&status=paid"),
+  );
+  assert.equal(options.type, "expense");
+  assert.equal(options.status, "pending");
+  assert.equal(options.scope, "overdue");
+  assert.throws(
+    () => parseFinanceList(new URLSearchParams("month=2026-09&scope=anything")),
+    ValidationError,
+  );
+});
+
+import { financeWindow } from "../src/features/finance/validation.ts";
+import { Temporal } from "@js-temporal/polyfill";
+test("vencidas usa data da arena na virada UTC e não restringe mês", () => {
+  const instant = Temporal.Instant.from("2026-10-01T01:00:00Z");
+  assert.deepEqual(
+    financeWindow(
+      { scope: "overdue", month: "2020-01" },
+      "America/Sao_Paulo",
+      instant,
+    ),
+    { column: "due_date", start: null, end: "2026-09-30" },
+  );
+  assert.deepEqual(
+    financeWindow(
+      { scope: "month", month: "2026-12" },
+      "America/Sao_Paulo",
+      instant,
+    ),
+    { column: "activity_on", start: "2026-12-01", end: "2027-01-01" },
+  );
 });
