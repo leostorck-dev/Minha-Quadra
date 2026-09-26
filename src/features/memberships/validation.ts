@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import { ValidationError } from "../../lib/api/validation-error.ts";
 
 export const MEMBERSHIP_METHODS = ["pix", "cash", "card", "transfer"] as const;
@@ -8,7 +9,21 @@ export function parsePaymentSearch(params: URLSearchParams) {
   const membershipId = params.get("membershipId");
   if (!Number.isInteger(page) || page < 1 || page > 10000)
     throw new ValidationError("Página inválida.");
-  return { page, membershipId: membershipId ? uuid(membershipId) : null };
+  const month = params.get("month") || null;
+  if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+    throw new ValidationError("Mês de recebimento inválido.");
+  const method = params.get("method") ?? "all";
+  if (
+    method !== "all" &&
+    !MEMBERSHIP_METHODS.includes(method as MembershipMethod)
+  )
+    throw new ValidationError("Forma de pagamento inválida.");
+  return {
+    page,
+    membershipId: membershipId ? uuid(membershipId) : null,
+    month,
+    method: method as MembershipMethod | "all",
+  };
 }
 
 function record(value: unknown, keys: string[]) {
@@ -105,4 +120,16 @@ export function parseCancel(value: unknown) {
   const data = record(value, ["status"]);
   if (data.status !== "cancelled")
     throw new ValidationError("Situação inválida.");
+}
+
+export function paymentMonthWindow(month: string, timezone: string) {
+  const start = Temporal.PlainYearMonth.from(month).toPlainDate({ day: 1 });
+  return {
+    start: start.toZonedDateTime(timezone).toInstant().toString(),
+    end: start
+      .add({ months: 1 })
+      .toZonedDateTime(timezone)
+      .toInstant()
+      .toString(),
+  };
 }

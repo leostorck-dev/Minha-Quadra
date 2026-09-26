@@ -60,15 +60,45 @@ test("histórico de mensalidades valida paginação e assinatura", () => {
   assert.deepEqual(parsePaymentSearch(new URLSearchParams()), {
     page: 1,
     membershipId: null,
+    month: null,
+    method: "all",
   });
   const membershipId = "a1111111-aaaa-4111-8111-111111111119";
   assert.deepEqual(
     parsePaymentSearch(new URLSearchParams({ page: "3", membershipId })),
-    { page: 3, membershipId },
+    { page: 3, membershipId, month: null, method: "all" },
   );
   for (const page of ["0", "", "-1", "1.5", "NaN", "10001"])
     assert.throws(() => parsePaymentSearch(new URLSearchParams({ page })));
   assert.throws(() =>
     parsePaymentSearch(new URLSearchParams({ membershipId: "invalid" })),
   );
+});
+
+import { paymentMonthWindow } from "../src/features/memberships/validation.ts";
+test("histórico combina mês e meio e rejeita filtros inválidos", () => {
+  const result = parsePaymentSearch(
+    new URLSearchParams("month=2026-09&method=pix&page=2"),
+  );
+  assert.equal(result.month, "2026-09");
+  assert.equal(result.method, "pix");
+  assert.equal(result.page, 2);
+  for (const query of [
+    "month=2026-13",
+    "month=2026-9",
+    "month=2026-09-01",
+    "method=boleto",
+  ])
+    assert.throws(() => parsePaymentSearch(new URLSearchParams(query)));
+  assert.equal(parsePaymentSearch(new URLSearchParams("month=")).month, null);
+});
+test("mês recebido usa meia-noite local e atravessa o ano", () => {
+  assert.deepEqual(paymentMonthWindow("2026-12", "America/Sao_Paulo"), {
+    start: "2026-12-01T03:00:00Z",
+    end: "2027-01-01T03:00:00Z",
+  });
+  assert.deepEqual(paymentMonthWindow("2026-09", "Asia/Tokyo"), {
+    start: "2026-08-31T15:00:00Z",
+    end: "2026-09-30T15:00:00Z",
+  });
 });

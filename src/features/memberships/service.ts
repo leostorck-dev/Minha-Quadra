@@ -1,3 +1,4 @@
+import { paymentMonthWindow } from "./validation";
 import { collectById } from "@/lib/database/pagination";
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
@@ -205,6 +206,18 @@ export async function listMembershipPayments(
     .eq("tenant_id", context.tenantId);
   if (options.membershipId)
     query = query.eq("membership_id", options.membershipId);
+  if (options.method !== "all") query = query.eq("method", options.method);
+  if (options.month) {
+    const { data: arena, error } = await supabase
+      .from("tenants")
+      .select("timezone")
+      .eq("id", context.tenantId)
+      .single();
+    if (error || !arena)
+      throw new Error("Não foi possível carregar o fuso da arena.");
+    const window = paymentMonthWindow(options.month, arena.timezone);
+    query = query.gte("paid_at", window.start).lt("paid_at", window.end);
+  }
   const result = await query
     .order("paid_at", { ascending: false })
     .order("id", { ascending: false })

@@ -28,6 +28,8 @@ export function MembershipPaymentHistory({
   timezone: string;
   revision: number;
 }) {
+  const [month, setMonth] = useState("");
+  const [method, setMethod] = useState("all");
   const [page, setPage] = useState(1);
   const [membershipId, setMembershipId] = useState("");
   const [retry, setRetry] = useState(0);
@@ -36,7 +38,14 @@ export function MembershipPaymentHistory({
     data?: MembershipPaymentsPage;
     error?: string;
   } | null>(null);
-  const key = JSON.stringify([page, membershipId, revision, retry]);
+  const key = JSON.stringify([
+    page,
+    membershipId,
+    month,
+    method,
+    revision,
+    retry,
+  ]);
   const current = result?.key === key ? result : null;
   const customers = new Map(
     overview.customers.map((item) => [item.id, item.name]),
@@ -55,6 +64,8 @@ export function MembershipPaymentHistory({
     const controller = new AbortController();
     const params = new URLSearchParams({
       page: String(page),
+      month,
+      method,
       ...(membershipId ? { membershipId } : {}),
     });
     void fetch(`/api/memberships/payments?${params}`, {
@@ -80,7 +91,7 @@ export function MembershipPaymentHistory({
           });
       });
     return () => controller.abort();
-  }, [page, membershipId, key]);
+  }, [page, membershipId, month, method, key]);
 
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900 p-5">
@@ -106,9 +117,54 @@ export function MembershipPaymentHistory({
           ))}
         </select>
       </label>
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          Mês de recebimento
+          <input
+            type="month"
+            value={month}
+            onChange={(event) => {
+              setMonth(event.target.value);
+              setPage(1);
+            }}
+            className="mt-2 block rounded-lg border border-white/20 bg-slate-800 p-2"
+          />
+        </label>
+        <label className="text-sm">
+          Forma de pagamento
+          <select
+            value={method}
+            onChange={(event) => {
+              setMethod(event.target.value);
+              setPage(1);
+            }}
+            className="mt-2 block rounded-lg border border-white/20 bg-slate-800 p-2"
+          >
+            <option value="all">Todas</option>
+            {Object.entries(methods).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            setMonth("");
+            setMethod("all");
+            setMembershipId("");
+            setPage(1);
+          }}
+          className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+        >
+          Limpar filtros
+        </button>
+      </div>
       <p className="mt-2 text-xs text-slate-400">
         Recebimentos mais recentes primeiro. Horários no fuso da arena (
-        {timezone}).
+        {timezone}). Sem mês selecionado, exibe todo o histórico. O mês filtra a
+        data do recebimento; o vencimento quitado aparece em cada registro.
       </p>
       {!current && (
         <p role="status" className="mt-4 text-sm">

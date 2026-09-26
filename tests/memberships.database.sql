@@ -123,6 +123,13 @@ begin
   if (select count(*) from (select id from public.membership_payments where membership_id = v_membership.id
       order by paid_at desc, id desc offset 50 limit 25) page) <> 5
     then raise exception 'Terceira página de pagamentos incorreta'; end if;
+  if (select count(*) from public.membership_payments where membership_id = v_membership.id
+      and method = 'pix'
+      and paid_at >= (date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')
+      and paid_at < ((date_trunc('month', now() at time zone 'America/Sao_Paulo') + interval '1 month') at time zone 'America/Sao_Paulo')) <> 55
+    then raise exception 'Filtro por recebimento usou vencimento ou perdeu pagamentos'; end if;
+  if exists(select 1 from public.membership_payments where membership_id = v_membership.id and method = 'cash')
+    then raise exception 'Filtro de meio misturou pagamentos'; end if;
   perform public.cancel_customer_membership(v_membership.id);
   if (select count(*) from public.membership_payments where membership_id = v_membership.id) <> 55
     then raise exception 'Cancelamento apagou histórico'; end if;
