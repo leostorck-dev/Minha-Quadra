@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { saveAndRefresh } from "@/lib/api/save-and-refresh";
+import { useEffect, useRef, useState } from "react";
 import type { Reservation } from "@/features/reservations/service";
 import type { Payment, PaymentEvent } from "@/features/payments/service";
 import {
@@ -38,6 +39,9 @@ export function PaymentPanel({
   const [method, setMethod] = useState<PaymentMethod>("PIX");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [refreshRequired, setRefreshRequired] = useState(false);
+  const [notice, setNotice] = useState("");
+  const sending = useRef(false);
 
   async function reload(signal?: AbortSignal) {
     const response = await fetch(
@@ -55,6 +59,7 @@ export function PaymentPanel({
         body.error?.message ?? "Não foi possível carregar a cobrança.",
       );
     setDetails(body);
+    setRefreshRequired(false);
   }
 
   useEffect(() => {
@@ -85,7 +90,27 @@ export function PaymentPanel({
     return () => controller.abort();
   }, [reservation.id]);
 
+  async function retryLoad() {
+    if (sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await reload();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível atualizar a cobrança.",
+      );
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  }
+
   async function submit(action: "pay" | "refund") {
+    if (sending.current || busy || refreshRequired) return;
     if (
       action === "refund" &&
       !window.confirm(
@@ -93,26 +118,47 @@ export function PaymentPanel({
       )
     )
       return;
+    sending.current = true;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      const response = await fetch(
-        `/api/reservations/${reservation.id}/payment`,
-        {
-          method: action === "pay" ? "POST" : "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            action === "pay" ? { method } : { status: "refunded" },
-          ),
+      const result = await saveAndRefresh(
+        async () => {
+          const response = await fetch(
+            `/api/reservations/${reservation.id}/payment`,
+            {
+              method: action === "pay" ? "POST" : "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(
+                action === "pay" ? { method } : { status: "refunded" },
+              ),
+            },
+          );
+          const body = (await response.json()) as {
+            error?: { message: string };
+          };
+          if (!response.ok)
+            throw new Error(
+              body.error?.message ?? "Não foi possível salvar o pagamento.",
+            );
+        },
+        async () => {
+          onChanged();
+          await reload();
         },
       );
-      const body = (await response.json()) as { error?: { message: string } };
-      if (!response.ok)
-        throw new Error(
-          body.error?.message ?? "Não foi possível salvar o pagamento.",
+      setNotice(
+        action === "pay"
+          ? "Pagamento registrado com sucesso."
+          : "Estorno registrado com sucesso.",
+      );
+      if (!result.refreshed) {
+        setRefreshRequired(true);
+        setError(
+          "O registro foi concluído, mas a cobrança não foi atualizada na tela. Atualize os dados antes de continuar; não é necessário registrar novamente.",
         );
-      await reload();
-      onChanged();
+      }
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -120,6 +166,7 @@ export function PaymentPanel({
           : "Não foi possível salvar o pagamento.",
       );
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -149,6 +196,7 @@ export function PaymentPanel({
           </div>
           <button
             type="button"
+            disabled={busy}
             onClick={onClose}
             aria-label="Fechar"
             className="text-2xl text-slate-400 hover:text-white"
@@ -157,6 +205,21 @@ export function PaymentPanel({
           </button>
         </div>
 
+        {notice && (
+          <p role="status" className="mt-4 text-sm text-lime-300">
+            {notice}
+          </p>
+        )}
+        {(refreshRequired || (!details && error)) && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void retryLoad()}
+            className="mt-3 rounded-lg border border-white/20 px-3 py-2 text-sm disabled:opacity-50"
+          >
+            Atualizar dados
+          </button>
+        )}
         {error && (
           <p role="alert" className="mt-5 text-sm text-rose-300">
             {error}
@@ -201,7 +264,7 @@ export function PaymentPanel({
                 </label>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || refreshRequired}
                   onClick={() => submit("pay")}
                   className="rounded-lg bg-lime-400 px-4 py-2 font-semibold text-slate-950 disabled:opacity-50"
                 >
@@ -212,7 +275,7 @@ export function PaymentPanel({
             {details.situation === "paid" && (
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || refreshRequired}
                 onClick={() => submit("refund")}
                 className="mt-5 rounded-lg border border-rose-500/40 px-4 py-2 text-sm text-rose-300 disabled:opacity-50"
               >

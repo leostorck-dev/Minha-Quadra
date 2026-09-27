@@ -65,3 +65,32 @@ test("recuperação de aula ou comissão repete apenas leitura após gravação 
   assert.equal(writes, 1);
   assert.equal(reads, 2);
 });
+
+for (const action of ["pay", "refund"]) {
+  test(
+    action + ": confirmação preservada quando consulta da cobrança falha",
+    async () => {
+      let writes = 0,
+        reads = 0,
+        agendaUpdates = 0;
+      const reload = async () => {
+        reads++;
+        if (reads === 1) throw Error("GET indisponível");
+      };
+      const result = await saveClassAndRefresh(
+        async () => {
+          writes++;
+        },
+        async () => {
+          agendaUpdates++;
+          await reload();
+        },
+      );
+      assert.deepEqual(result, { refreshed: false });
+      await reload();
+      assert.equal(writes, 1);
+      assert.equal(reads, 2);
+      assert.equal(agendaUpdates, 1);
+    },
+  );
+}
