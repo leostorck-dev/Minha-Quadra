@@ -4,6 +4,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { useEffect, useState } from "react";
 import { ReservationModal } from "@/components/reservation-modal";
 import { AgendaExport } from "@/components/agenda-export";
+import { AgendaSummary } from "@/components/agenda-summary";
 import { PaymentPanel } from "@/components/payment-panel";
 import type { Court } from "@/features/courts/service";
 import type { Reservation } from "@/features/reservations/service";
@@ -267,6 +268,14 @@ export function AgendaView({
         <p role="alert" className="mt-5 text-sm text-rose-300">
           {actionError}
         </p>
+      )}
+      {!loading && !error && (
+        <AgendaSummary
+          items={items}
+          from={from}
+          to={to}
+          showPayments={canWrite}
+        />
       )}
       {loading ? (
         <p role="status" className="mt-8 text-sm text-slate-400">

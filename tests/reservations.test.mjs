@@ -183,3 +183,69 @@ test("CSV da agenda preserva cabeçalho vazio e mais de mil reservas", () => {
     1107,
   );
 });
+
+import { summarizeAgenda } from "../src/features/reservations/summary.ts";
+const summaryFrom = "2026-09-27T00:00:00Z";
+const summaryTo = "2026-09-28T00:00:00Z";
+
+test("resumo distingue reservas, bloqueios e situações sem somar cancelamentos/faltas", () => {
+  const summary = summarizeAgenda(
+    [
+      { ...reportItem, status: "completed", paymentSituation: "pending" },
+      { ...reportItem, kind: "block", price: 900, paymentSituation: "pending" },
+      { ...reportItem, status: "cancelled", paymentSituation: "pending" },
+      { ...reportItem, status: "no_show", paymentSituation: "pending" },
+    ],
+    summaryFrom,
+    summaryTo,
+  );
+  assert.deepEqual(summary, {
+    bookings: 1,
+    blocks: 1,
+    minutes: 120,
+    pendingCents: 12550,
+  });
+});
+
+test("resumo preserva centavos e não considera pagos, estornados ou gratuitos pendentes", () => {
+  const rows = [
+    "pending",
+    "pending",
+    "paid",
+    "refunded",
+    "free",
+    undefined,
+  ].map((paymentSituation, i) => ({
+    ...reportItem,
+    price: i === 0 ? 0.1 : 0.2,
+    paymentSituation,
+  }));
+  assert.equal(summarizeAgenda(rows, summaryFrom, summaryTo).pendingCents, 30);
+});
+
+test("horas limitadas ao período somam quadras simultâneas e excluem intervalos externos", () => {
+  const rows = [
+    {
+      ...reportItem,
+      startAt: "2026-09-26T23:00:00Z",
+      endAt: "2026-09-27T01:00:00Z",
+    },
+    {
+      ...reportItem,
+      startAt: "2026-09-27T23:30:00Z",
+      endAt: "2026-09-28T01:00:00Z",
+    },
+    { ...reportItem, courtId: customerId },
+    { ...reportItem, endAt: summaryFrom, startAt: "2026-09-26T23:00:00Z" },
+    { ...reportItem, startAt: summaryTo, endAt: "2026-09-28T01:00:00Z" },
+  ];
+  const summary = summarizeAgenda(rows, summaryFrom, summaryTo);
+  assert.equal(summary.bookings, 3);
+  assert.equal(summary.minutes, 150);
+  assert.deepEqual(summarizeAgenda([], summaryFrom, summaryTo), {
+    bookings: 0,
+    blocks: 0,
+    minutes: 0,
+    pendingCents: 0,
+  });
+});
