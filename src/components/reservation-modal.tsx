@@ -1,7 +1,7 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Court } from "@/features/courts/service";
 import type { Customer } from "@/features/customers/service";
 import type { Reservation } from "@/features/reservations/service";
@@ -62,11 +62,39 @@ export function ReservationModal({
     reservation?.customerName ?? "",
   );
   const [customerId, setCustomerId] = useState(reservation?.customerId ?? "");
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilityRetry, setAvailabilityRetry] = useState(0);
+  const [customerRetry, setCustomerRetry] = useState(0);
+  const availabilityKey = JSON.stringify([courtId, date, availabilityRetry]);
+  const customerKey = JSON.stringify([kind, customerQuery, customerRetry]);
+  const [availabilityResult, setAvailabilityResult] = useState<{
+    key: string;
+    slots?: Slot[];
+    error?: string;
+  } | null>(null);
+  const [customerResult, setCustomerResult] = useState<{
+    key: string;
+    items?: Customer[];
+    error?: string;
+  } | null>(null);
+  const availabilityLoading =
+    !!courtId && !!date && availabilityResult?.key !== availabilityKey;
+  const availabilityError =
+    availabilityResult?.key === availabilityKey
+      ? (availabilityResult.error ?? "")
+      : "";
+  const slots =
+    availabilityResult?.key === availabilityKey
+      ? (availabilityResult.slots ?? [])
+      : [];
+  const customersLoading =
+    kind === "booking" && customerResult?.key !== customerKey;
+  const customerError =
+    customerResult?.key === customerKey ? (customerResult.error ?? "") : "";
+  const customers =
+    customerResult?.key === customerKey ? (customerResult.items ?? []) : [];
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
 
   useEffect(() => {
     if (!courtId || !date) return;
@@ -81,15 +109,22 @@ export function ReservationModal({
         return (await response.json()) as { slots: Slot[] };
       })
       .then((result) => {
-        setSlots(result.slots);
-        setAvailabilityError("");
+        if (!controller.signal.aborted)
+          setAvailabilityResult({ key: availabilityKey, slots: result.slots });
       })
       .catch((cause: unknown) => {
-        if (cause instanceof Error && cause.name === "AbortError") return;
-        setAvailabilityError("Não foi possível consultar a disponibilidade.");
+        if (
+          controller.signal.aborted ||
+          (cause instanceof Error && cause.name === "AbortError")
+        )
+          return;
+        setAvailabilityResult({
+          key: availabilityKey,
+          error: "Não foi possível consultar os horários.",
+        });
       });
     return () => controller.abort();
-  }, [courtId, date]);
+  }, [courtId, date, availabilityKey]);
 
   useEffect(() => {
     if (kind !== "booking") return;
@@ -102,13 +137,23 @@ export function ReservationModal({
         if (!response.ok) throw new Error();
         return (await response.json()) as { items: Customer[] };
       })
-      .then((result) => setCustomers(result.items))
+      .then((result) => {
+        if (!controller.signal.aborted)
+          setCustomerResult({ key: customerKey, items: result.items });
+      })
       .catch((cause: unknown) => {
-        if (cause instanceof Error && cause.name === "AbortError") return;
-        setCustomers([]);
+        if (
+          controller.signal.aborted ||
+          (cause instanceof Error && cause.name === "AbortError")
+        )
+          return;
+        setCustomerResult({
+          key: customerKey,
+          error: "Não foi possível buscar os clientes.",
+        });
       });
     return () => controller.abort();
-  }, [kind, customerQuery]);
+  }, [kind, customerQuery, customerKey]);
 
   const court = courts.find((item) => item.id === courtId);
   const availableStarts = slots.filter((slot) => {
@@ -142,11 +187,24 @@ export function ReservationModal({
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (
+      sending.current ||
+      availabilityLoading ||
+      availabilityError ||
+      (kind === "booking" && (customersLoading || customerError))
+    )
+      return;
     setError("");
-    if (!courtId || !startTime || (kind === "booking" && !customerId)) {
+    if (
+      !date ||
+      !courtId ||
+      !startTime ||
+      (kind === "booking" && !customerId)
+    ) {
       setError("Selecione quadra, horário e cliente.");
       return;
     }
+    sending.current = true;
     setBusy(true);
     try {
       const startAt = Temporal.PlainDateTime.from(`${date}T${startTime}`)
@@ -179,8 +237,10 @@ export function ReservationModal({
           body: JSON.stringify(body),
         },
       );
-      const result = (await response.json()) as { error?: { message: string } };
       if (!response.ok) {
+        const result = (await response.json()) as {
+          error?: { message: string };
+        };
         setError(result.error?.message ?? "Não foi possível salvar a reserva.");
         return;
       }
@@ -188,6 +248,7 @@ export function ReservationModal({
     } catch {
       setError("Falha ao salvar. Confira a data e tente novamente.");
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -209,200 +270,256 @@ export function ReservationModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={busy}
             aria-label="Fechar"
             className="text-2xl text-slate-400 hover:text-white"
           >
             ×
           </button>
         </div>
-        <form onSubmit={save} className="mt-5 space-y-4">
-          {!reservation && (
-            <label className="block text-sm font-medium">
-              Tipo
-              <select
-                value={kind}
-                onChange={(event) =>
-                  setKind(event.target.value as ReservationKind)
-                }
-                className={inputStyle}
-              >
-                <option value="booking">Reserva</option>
-                <option value="block">Bloqueio de horário</option>
-              </select>
-            </label>
-          )}
-          <label className="block text-sm font-medium">
-            Quadra
-            <select
-              required
-              value={courtId}
-              onChange={(event) => {
-                setCourtId(event.target.value);
-                setStartTime("");
-                setSlots([]);
-              }}
-              className={inputStyle}
-            >
-              <option value="">Selecione</option>
-              {courts
-                .filter(
-                  (item) =>
-                    item.status === "available" ||
-                    item.id === reservation?.courtId,
-                )
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          {kind === "booking" && (
-            <div>
+        <form onSubmit={save} className="mt-5">
+          <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
+            {!reservation && (
               <label className="block text-sm font-medium">
-                Buscar cliente
-                <input
-                  type="search"
-                  value={customerQuery}
-                  onChange={(event) => {
-                    setCustomerQuery(event.target.value);
-                    setCustomerId("");
-                  }}
-                  placeholder="Nome do cliente"
-                  className={inputStyle}
-                />
-              </label>
-              <label className="mt-3 block text-sm font-medium">
-                Cliente
+                Tipo
                 <select
-                  required
-                  value={customerId}
-                  onChange={(event) => setCustomerId(event.target.value)}
+                  value={kind}
+                  onChange={(event) =>
+                    setKind(event.target.value as ReservationKind)
+                  }
                   className={inputStyle}
                 >
-                  <option value="">Selecione um cliente ativo</option>
-                  {reservation?.customerId &&
-                    !customers.some(
-                      (item) => item.id === reservation.customerId,
-                    ) && (
-                      <option value={reservation.customerId}>
-                        {reservation.customerName ?? "Cliente atual"}
-                      </option>
-                    )}
-                  {customers.map((item) => (
+                  <option value="booking">Reserva</option>
+                  <option value="block">Bloqueio de horário</option>
+                </select>
+              </label>
+            )}
+            <label className="block text-sm font-medium">
+              Quadra
+              <select
+                required
+                value={courtId}
+                onChange={(event) => {
+                  setCourtId(event.target.value);
+                  setStartTime("");
+                }}
+                className={inputStyle}
+              >
+                <option value="">Selecione</option>
+                {courts
+                  .filter(
+                    (item) =>
+                      item.status === "available" ||
+                      item.id === reservation?.courtId,
+                  )
+                  .map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                     </option>
                   ))}
+              </select>
+            </label>
+            {kind === "booking" && (
+              <div>
+                <label className="block text-sm font-medium">
+                  Buscar cliente
+                  <input
+                    type="search"
+                    value={customerQuery}
+                    onChange={(event) => {
+                      setCustomerQuery(event.target.value);
+                      setCustomerId("");
+                    }}
+                    placeholder="Nome do cliente"
+                    className={inputStyle}
+                  />
+                </label>
+                <label className="mt-3 block text-sm font-medium">
+                  Cliente
+                  <select
+                    required
+                    value={customerId}
+                    disabled={customersLoading || !!customerError}
+                    onChange={(event) => setCustomerId(event.target.value)}
+                    className={inputStyle}
+                  >
+                    <option value="">Selecione um cliente ativo</option>
+                    {reservation?.customerId &&
+                      !customers.some(
+                        (item) => item.id === reservation.customerId,
+                      ) && (
+                        <option value={reservation.customerId}>
+                          {reservation.customerName ?? "Cliente atual"}
+                        </option>
+                      )}
+                    {customers.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+            {kind === "booking" &&
+              (customersLoading ? (
+                <p role="status" className="text-sm text-slate-400">
+                  Buscando clientes...
+                </p>
+              ) : customerError ? (
+                <p role="alert" className="text-sm text-rose-300">
+                  {customerError}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setCustomerRetry((value) => value + 1)}
+                    className="underline"
+                  >
+                    Tentar buscar clientes novamente
+                  </button>
+                </p>
+              ) : customers.length === 0 ? (
+                <p role="status" className="text-sm text-slate-400">
+                  Nenhum cliente ativo encontrado para esta busca.
+                </p>
+              ) : null)}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium">
+                Data
+                <input
+                  required
+                  type="date"
+                  value={date}
+                  onChange={(event) => {
+                    setDate(event.target.value);
+                    setStartTime("");
+                  }}
+                  className={inputStyle}
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Duração
+                <select
+                  value={duration}
+                  onChange={(event) => {
+                    setDuration(Number(event.target.value));
+                    setStartTime("");
+                  }}
+                  className={inputStyle}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (i + 1) * 30).map(
+                    (minutes) => (
+                      <option key={minutes} value={minutes}>
+                        {minutes / 60} h
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
             </div>
-          )}
-          <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium">
-              Data
-              <input
+              Início
+              <select
                 required
-                type="date"
-                value={date}
-                onChange={(event) => {
-                  setDate(event.target.value);
-                  setStartTime("");
-                  setSlots([]);
-                }}
+                value={startTime}
+                disabled={availabilityLoading || !!availabilityError}
+                onChange={(event) => setStartTime(event.target.value)}
+                className={inputStyle}
+              >
+                <option value="">Selecione um horário livre</option>
+                {availableStarts.map((slot) => {
+                  const time = localParts(slot.startAt, timezone).time;
+                  return (
+                    <option key={slot.startAt} value={time}>
+                      {time}
+                    </option>
+                  );
+                })}
+                {reservation &&
+                  startTime &&
+                  !availableStarts.some(
+                    (slot) =>
+                      localParts(slot.startAt, timezone).time === startTime,
+                  ) && <option value={startTime}>{startTime} (atual)</option>}
+              </select>
+            </label>
+            {availabilityLoading && (
+              <p role="status" className="text-sm text-slate-400">
+                Consultando horários...
+              </p>
+            )}
+            {courtId &&
+              date &&
+              !availabilityLoading &&
+              !availabilityError &&
+              availableStarts.length === 0 && (
+                <p role="status" className="text-sm text-slate-400">
+                  Nenhum horário livre para a duração selecionada. Tente outra
+                  data, quadra ou duração.
+                </p>
+              )}
+            {availabilityError && (
+              <p role="alert" className="text-sm text-rose-300">
+                {availabilityError}{" "}
+                <button
+                  type="button"
+                  onClick={() => setAvailabilityRetry((value) => value + 1)}
+                  className="underline"
+                >
+                  Tentar consultar horários novamente
+                </button>
+              </p>
+            )}
+            {court && kind === "booking" && (
+              <p className="text-sm text-slate-400">
+                Preço estimado:{" "}
+                {money.format(
+                  Math.round(((court.pricePerHour * duration) / 60) * 100) /
+                    100,
+                )}
+                . O valor final será confirmado ao salvar.
+              </p>
+            )}
+            <label className="block text-sm font-medium">
+              Observações
+              <textarea
+                rows={3}
+                maxLength={2000}
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
                 className={inputStyle}
               />
             </label>
-            <label className="block text-sm font-medium">
-              Duração
-              <select
-                value={duration}
-                onChange={(event) => {
-                  setDuration(Number(event.target.value));
-                  setStartTime("");
-                }}
-                className={inputStyle}
+            {error && (
+              <p role="alert" className="text-sm text-rose-300">
+                {error}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={
+                  busy ||
+                  !date ||
+                  !courtId ||
+                  !startTime ||
+                  availabilityLoading ||
+                  !!availabilityError ||
+                  (kind === "booking" &&
+                    (!customerId || customersLoading || !!customerError))
+                }
+                className="rounded-lg bg-lime-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-lime-300 disabled:opacity-60"
               >
-                {Array.from({ length: 24 }, (_, i) => (i + 1) * 30).map(
-                  (minutes) => (
-                    <option key={minutes} value={minutes}>
-                      {minutes / 60} h
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-          </div>
-          <label className="block text-sm font-medium">
-            Início
-            <select
-              required
-              value={startTime}
-              onChange={(event) => setStartTime(event.target.value)}
-              className={inputStyle}
-            >
-              <option value="">Selecione um horário livre</option>
-              {availableStarts.map((slot) => {
-                const time = localParts(slot.startAt, timezone).time;
-                return (
-                  <option key={slot.startAt} value={time}>
-                    {time}
-                  </option>
-                );
-              })}
-              {reservation &&
-                startTime &&
-                !availableStarts.some(
-                  (slot) =>
-                    localParts(slot.startAt, timezone).time === startTime,
-                ) && <option value={startTime}>{startTime} (atual)</option>}
-            </select>
-          </label>
-          {availabilityError && (
-            <p role="alert" className="text-sm text-rose-300">
-              {availabilityError}
-            </p>
-          )}
-          {court && kind === "booking" && (
-            <p className="text-sm text-slate-400">
-              Preço estimado:{" "}
-              {money.format(
-                Math.round(((court.pricePerHour * duration) / 60) * 100) / 100,
-              )}
-              . O valor final é calculado no banco.
-            </p>
-          )}
-          <label className="block text-sm font-medium">
-            Observações
-            <textarea
-              rows={3}
-              maxLength={2000}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className={inputStyle}
-            />
-          </label>
-          {error && (
-            <p role="alert" className="text-sm text-rose-300">
-              {error}
-            </p>
-          )}
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={busy || !!availabilityError}
-              className="rounded-lg bg-lime-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-lime-300 disabled:opacity-60"
-            >
-              {busy ? "Salvando..." : "Salvar"}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
-            >
-              Cancelar
-            </button>
-          </div>
+                {busy ? "Salvando..." : "Salvar"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+            </div>
+          </fieldset>
         </form>
       </div>
     </div>
