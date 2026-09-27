@@ -7,7 +7,12 @@ import {
   parseReservationCreate,
   parseReservationUpdate,
   parseAvailability,
+  parseReservationList,
 } from "../src/features/reservations/validation.ts";
+import {
+  assertPaymentFilterPermission,
+  filterReservationsByPayment,
+} from "../src/features/reservations/payment-filter.ts";
 import { ValidationError } from "../src/lib/api/validation-error.ts";
 
 const courtId = "11111111-1111-4111-8111-111111111111";
@@ -248,4 +253,73 @@ test("horas limitadas ao período somam quadras simultâneas e excluem intervalo
     minutes: 0,
     pendingCents: 0,
   });
+});
+
+test("filtro de cobrança valida opções e usa todas por padrão", () => {
+  const params = new URLSearchParams({
+    from: "2026-09-27T00:00:00Z",
+    to: "2026-09-28T00:00:00Z",
+  });
+  assert.equal(parseReservationList(params).paymentSituation, "all");
+  for (const situation of [
+    "all",
+    "pending",
+    "paid",
+    "refunded",
+    "cancelled",
+    "free",
+  ]) {
+    params.set("paymentSituation", situation);
+    assert.equal(parseReservationList(params).paymentSituation, situation);
+  }
+  params.set("paymentSituation", "unknown");
+  assert.throws(() => parseReservationList(params), ValidationError);
+});
+
+test("filtro de cobrança mantém blocos apenas em Todas e separa as situações", () => {
+  const rows = ["pending", "paid", "refunded", "cancelled", "free"].map(
+    (paymentSituation) => ({
+      ...reportItem,
+      id: paymentSituation,
+      paymentSituation,
+    }),
+  );
+  rows.push({
+    ...reportItem,
+    id: "block",
+    kind: "block",
+    paymentSituation: undefined,
+  });
+  assert.equal(filterReservationsByPayment(rows, "all").length, 6);
+  for (const situation of [
+    "pending",
+    "paid",
+    "refunded",
+    "cancelled",
+    "free",
+  ]) {
+    assert.deepEqual(
+      filterReservationsByPayment(rows, situation).map((row) => row.id),
+      [situation],
+    );
+  }
+});
+
+test("professor não consulta filtro financeiro", () => {
+  assert.doesNotThrow(() => assertPaymentFilterPermission("COACH", "all"));
+  for (const situation of [
+    "pending",
+    "paid",
+    "refunded",
+    "cancelled",
+    "free",
+  ]) {
+    assert.throws(
+      () => assertPaymentFilterPermission("COACH", situation),
+      ValidationError,
+    );
+    assert.doesNotThrow(() =>
+      assertPaymentFilterPermission("RECEPTIONIST", situation),
+    );
+  }
 });

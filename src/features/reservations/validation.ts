@@ -1,5 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { ValidationError } from "../../lib/api/validation-error.ts";
+import {
+  paymentSituations,
+  type PaymentSituationFilter,
+} from "./payment-filter.ts";
 
 export type ReservationStatus =
   | "pending"
@@ -210,6 +214,9 @@ export function parseReservationList(params: URLSearchParams) {
     throw new ValidationError("O período deve ter até oito dias.");
   const courtId = params.get("courtId");
   const status = params.get("status");
+  const paymentSituation = params.get("paymentSituation") ?? "all";
+  if (!paymentSituations.includes(paymentSituation as PaymentSituationFilter))
+    throw new ValidationError("Filtro de cobrança inválido.");
   if (
     status &&
     status !== "all" &&
@@ -221,6 +228,7 @@ export function parseReservationList(params: URLSearchParams) {
     to,
     courtId: courtId ? parseUuid(courtId, "Quadra") : null,
     status: (status ?? "all") as ReservationStatus | "all",
+    paymentSituation: paymentSituation as PaymentSituationFilter,
   };
 }
 

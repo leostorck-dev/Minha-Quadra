@@ -8,6 +8,11 @@ import { getCourt } from "@/features/courts/service";
 import { getCustomer } from "@/features/customers/service";
 import { overlaps } from "./conflicts";
 import {
+  assertPaymentFilterPermission,
+  filterReservationsByPayment,
+  type PaymentSituationFilter,
+} from "./payment-filter";
+import {
   assertLocalHours,
   assertRange,
   assertStatusTransition,
@@ -147,8 +152,10 @@ export async function listReservations(
     to: string;
     courtId: string | null;
     status: ReservationStatus | "all";
+    paymentSituation: PaymentSituationFilter;
   },
 ) {
+  assertPaymentFilterPermission(context.role, options.paymentSituation);
   const supabase = await createClient();
   const rows = await collectById<Joined>((after) => {
     let query = supabase
@@ -202,7 +209,9 @@ export async function listReservations(
             : "pending");
     }
   }
-  return { items };
+  return {
+    items: filterReservationsByPayment(items, options.paymentSituation),
+  };
 }
 
 export async function getReservation(context: AuthContext, id: string) {

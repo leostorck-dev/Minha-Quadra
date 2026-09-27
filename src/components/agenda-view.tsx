@@ -50,6 +50,7 @@ export function AgendaView({
   );
   const [courtId, setCourtId] = useState("");
   const [status, setStatus] = useState("all");
+  const [paymentSituation, setPaymentSituation] = useState("all");
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<{
     key: string;
@@ -78,7 +79,14 @@ export function AgendaView({
     .toZonedDateTime(timezone)
     .toInstant()
     .toString();
-  const requestKey = JSON.stringify([from, to, courtId, status, reload]);
+  const requestKey = JSON.stringify([
+    from,
+    to,
+    courtId,
+    status,
+    paymentSituation,
+    reload,
+  ]);
   const loading = result?.key !== requestKey;
   const items = loading ? [] : (result.items ?? []);
   const error = loading ? "" : (result.error ?? "");
@@ -90,6 +98,7 @@ export function AgendaView({
     const controller = new AbortController();
     const params = new URLSearchParams({ from, to, status });
     if (courtId) params.set("courtId", courtId);
+    if (canWrite) params.set("paymentSituation", paymentSituation);
     fetch(`/api/reservations?${params}`, {
       signal: controller.signal,
       cache: "no-store",
@@ -107,7 +116,16 @@ export function AgendaView({
         });
       });
     return () => controller.abort();
-  }, [from, to, courtId, status, reload, requestKey]);
+  }, [
+    from,
+    to,
+    courtId,
+    status,
+    paymentSituation,
+    canWrite,
+    reload,
+    requestKey,
+  ]);
 
   function move(days: number) {
     setDate(selectedDate.add({ days }).toString());
@@ -261,7 +279,30 @@ export function AgendaView({
       </div>
 
       {canWrite && (
-        <AgendaExport from={from} to={to} courtId={courtId} status={status} />
+        <label className="mt-3 block text-xs text-slate-400">
+          Cobrança
+          <select
+            value={paymentSituation}
+            onChange={(event) => setPaymentSituation(event.target.value)}
+            className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-sm text-white"
+          >
+            <option value="all">Todas</option>
+            <option value="pending">Pendente</option>
+            <option value="paid">Paga</option>
+            <option value="refunded">Estornada</option>
+            <option value="cancelled">Cancelada</option>
+            <option value="free">Sem cobrança</option>
+          </select>
+        </label>
+      )}
+      {canWrite && (
+        <AgendaExport
+          from={from}
+          to={to}
+          courtId={courtId}
+          status={status}
+          paymentSituation={paymentSituation}
+        />
       )}
 
       {actionError && (

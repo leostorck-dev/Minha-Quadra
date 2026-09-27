@@ -5,11 +5,13 @@ export function AgendaExport({
   to,
   courtId,
   status,
+  paymentSituation,
 }: {
   from: string;
   to: string;
   courtId: string;
   status: string;
+  paymentSituation: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -18,7 +20,13 @@ export function AgendaExport({
     setBusy(true);
     setError("");
     try {
-      const params = new URLSearchParams({ from, to, courtId, status });
+      const params = new URLSearchParams({
+        from,
+        to,
+        courtId,
+        status,
+        paymentSituation,
+      });
       const response = await fetch("/api/reservations/export?" + params, {
         cache: "no-store",
       });
