@@ -3,6 +3,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { useEffect, useState } from "react";
 import { ReservationModal } from "@/components/reservation-modal";
+import { AgendaExport } from "@/components/agenda-export";
 import { PaymentPanel } from "@/components/payment-panel";
 import type { Court } from "@/features/courts/service";
 import type { Reservation } from "@/features/reservations/service";
@@ -257,6 +258,10 @@ export function AgendaView({
           </select>
         </label>
       </div>
+
+      {canWrite && (
+        <AgendaExport from={from} to={to} courtId={courtId} status={status} />
+      )}
 
       {actionError && (
         <p role="alert" className="mt-5 text-sm text-rose-300">

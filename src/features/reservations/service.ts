@@ -1,3 +1,4 @@
+import { collectById } from "@/lib/database/pagination";
 import { Temporal } from "@js-temporal/polyfill";
 import type { AuthContext } from "@/lib/auth/context";
 import { ValidationError } from "@/lib/api/validation-error";
@@ -149,45 +150,56 @@ export async function listReservations(
   },
 ) {
   const supabase = await createClient();
-  let query = supabase
-    .from("reservations")
-    .select(detailSelect)
-    .eq("tenant_id", context.tenantId)
-    .lt("start_at", options.to)
-    .gt("end_at", options.from);
-  if (options.courtId) query = query.eq("court_id", options.courtId);
-  if (options.status !== "all") query = query.eq("status", options.status);
-  const { data, error } = await query.order("start_at", { ascending: true });
-  if (error) throw new Error("Não foi possível carregar a agenda.");
-  const items = ((data ?? []) as Joined[]).map(toReservation);
+  const rows = await collectById<Joined>((after) => {
+    let query = supabase
+      .from("reservations")
+      .select(detailSelect)
+      .eq("tenant_id", context.tenantId)
+      .lt("start_at", options.to)
+      .gt("end_at", options.from)
+      .order("id", { ascending: true })
+      .limit(200);
+    if (options.courtId) query = query.eq("court_id", options.courtId);
+    if (options.status !== "all") query = query.eq("status", options.status);
+    if (after) query = query.gt("id", after);
+    return query;
+  }, "Não foi possível carregar a agenda.");
+  const items = rows
+    .map(toReservation)
+    .sort(
+      (a, b) =>
+        Date.parse(a.startAt) - Date.parse(b.startAt) ||
+        a.id.localeCompare(b.id),
+    );
   if (context.role !== "COACH") {
     const bookingIds = items
       .filter((item) => item.kind === "booking")
       .map((item) => item.id);
-    if (bookingIds.length > 0) {
-      const { data: payments, error: paymentError } = await supabase
+    const statusByReservation = new Map<string, "paid" | "refunded">();
+    for (let offset = 0; offset < bookingIds.length; offset += 100) {
+      const { data: payments, error } = await supabase
         .from("payments")
         .select("reservation_id, status")
         .eq("tenant_id", context.tenantId)
-        .in("reservation_id", bookingIds);
-      if (paymentError)
+        .in("reservation_id", bookingIds.slice(offset, offset + 100));
+      if (error || !payments)
         throw new Error("Não foi possível carregar as cobranças.");
-      const statusByReservation = new Map(
-        (payments ?? []).map((payment) => [
+      for (const payment of payments) {
+        statusByReservation.set(
           payment.reservation_id,
           payment.status as "paid" | "refunded",
-        ]),
-      );
-      for (const item of items) {
-        if (item.kind !== "booking") continue;
-        item.paymentSituation =
-          statusByReservation.get(item.id) ??
-          (item.status === "cancelled"
-            ? "cancelled"
-            : item.price === 0
-              ? "free"
-              : "pending");
+        );
       }
+    }
+    for (const item of items) {
+      if (item.kind !== "booking") continue;
+      item.paymentSituation =
+        statusByReservation.get(item.id) ??
+        (item.status === "cancelled"
+          ? "cancelled"
+          : item.price === 0
+            ? "free"
+            : "pending");
     }
   }
   return { items };

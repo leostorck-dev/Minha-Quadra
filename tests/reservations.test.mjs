@@ -123,3 +123,63 @@ test("transições de status e filtros inválidos são rejeitados", () => {
     ValidationError,
   );
 });
+import { agendaReport } from "../src/features/reservations/reports.ts";
+
+const reportItem = {
+  id: courtId,
+  courtId,
+  courtName: '=Quadra "A"',
+  customerId,
+  customerName: "@Cliente",
+  kind: "booking",
+  startAt: "2026-09-27T01:00:00Z",
+  endAt: "2026-09-27T02:00:00Z",
+  status: "confirmed",
+  price: 125.5,
+  notes: null,
+  createdAt: base.startAt,
+  updatedAt: base.startAt,
+  paymentSituation: "paid",
+};
+
+test("CSV da agenda converte o fuso, mantém centavos e neutraliza fórmulas", () => {
+  const result = agendaReport([reportItem], "America/Sao_Paulo");
+  assert.ok(result.startsWith("\ufeff"));
+  assert.ok(result.includes('"2026-09-26T22:00:00";"2026-09-26T23:00:00"'));
+  assert.ok(result.includes('"125,50";"Pago"'));
+  assert.ok(result.includes('"\'=Quadra ""A"""'));
+  assert.ok(result.includes('"\'@Cliente"'));
+});
+
+test("CSV da agenda diferencia estorno, pendência e bloqueio", () => {
+  const result = agendaReport(
+    [
+      { ...reportItem, paymentSituation: "refunded" },
+      { ...reportItem, paymentSituation: "pending" },
+      {
+        ...reportItem,
+        kind: "block",
+        customerName: null,
+        price: 0,
+        paymentSituation: undefined,
+      },
+    ],
+    "America/Sao_Paulo",
+  );
+  assert.ok(result.includes('"Estornado"'));
+  assert.ok(result.includes('"Pendente"'));
+  assert.ok(result.includes('"Bloqueio"'));
+  assert.ok(result.includes('"0,00";"Não se aplica"'));
+});
+
+test("CSV da agenda preserva cabeçalho vazio e mais de mil reservas", () => {
+  assert.equal(agendaReport([], "America/Sao_Paulo").split("\r\n").length, 2);
+  const rows = Array.from({ length: 1105 }, (_, index) => ({
+    ...reportItem,
+    id: String(index),
+  }));
+  assert.equal(
+    agendaReport(rows, "America/Sao_Paulo").split("\r\n").length,
+    1107,
+  );
+});
