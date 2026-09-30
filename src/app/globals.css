@@ -32,11 +32,33 @@ a,
 summary {
   outline-offset: 4px;
 }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #d8c29a;
+  outline-offset: 3px;
+}
 h1,
 h2,
 h3,
 p {
   margin-top: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 .landing {
   overflow: hidden;
@@ -158,7 +180,7 @@ p {
   display: block;
   width: 208px;
   height: 56px;
-  background: url("/minha-quadra-brand-sheet.png") -169px -47px / 406px 304px
+  background: url("/minha-quadra-logo-horizontal.png") center / contain
     no-repeat;
   flex: none;
 }

@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { getAuthContext } from "@/lib/auth/context";
+import { noIndexMetadata } from "@/lib/metadata";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata = noIndexMetadata("Cadastrar arena");
 
 export default async function OnboardingPage() {
   const supabase = await createClient();

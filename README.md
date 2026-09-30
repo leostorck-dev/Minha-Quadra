@@ -4,7 +4,7 @@ Plataforma de gestão de arenas esportivas. O primeiro MVP reúne conta, equipe,
 
 ## Requisitos
 
-- Node.js compatível com Next.js 16
+- Node.js 22.6 ou superior (veja `.nvmrc`)
 - npm
 - Projeto Supabase com as migrations de `supabase/migrations` aplicadas
 
@@ -12,8 +12,10 @@ Plataforma de gestão de arenas esportivas. O primeiro MVP reúne conta, equipe,
 
 1. Execute `npm install`.
 2. Copie `.env.example` para `.env.local`.
-3. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com os valores do painel Connect do Supabase.
+3. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com os valores do painel Connect do Supabase. Ajuste também `NEXT_PUBLIC_APP_URL` para a URL pública do ambiente.
 4. Execute `npm run dev` e abra `http://localhost:3000`.
+
+`SIGNUP_MODE` controla novos cadastros: `open` libera o cadastro público, `invite` exige um link de convite e `closed` desativa a criação de contas. Sem configuração, produção usa `invite` e desenvolvimento usa `open`. `NEXT_PUBLIC_DEMO_URL` é opcional, aceita somente HTTP/HTTPS e o botão de demonstração só aparece quando houver um destino válido configurado.
 
 O projeto local está configurado para o Supabase `arena-saas`; `.env.local` é privado e não deve ser commitado. Para outro ambiente, use os valores do projeto correspondente.
 
@@ -45,7 +47,10 @@ Em `/finance`, a exportação CSV inclui todas as páginas do mês e respeita os
 - `npm run typecheck`: verificação TypeScript.
 - `npm run format:check`: conferência do Prettier.
 - `npm run format`: formatação do projeto.
-- `npm test`: validação automatizada de clientes, quadras, reservas e lançamentos financeiros.
+- `npm test`: executa toda a suíte unitária em `tests/*.test.mjs`.
+- `npm run check`: formatação, lint, tipagem e testes em sequência.
+
+O workflow em `.github/workflows/ci.yml` repete essas verificações e o build em todo pull request e push na branch `main`.
 
 Os testes de integração em [tests/crm-tags.database.sql](./tests/crm-tags.database.sql), [tests/reservations.database.sql](./tests/reservations.database.sql), [tests/payments.database.sql](./tests/payments.database.sql), [tests/finance.database.sql](./tests/finance.database.sql), [tests/dashboard.database.sql](./tests/dashboard.database.sql) e [tests/audit.database.sql](./tests/audit.database.sql) cobrem o banco. Execute-os em um projeto de desenvolvimento pelo editor SQL ou pelo conector Supabase; as transações terminam em `ROLLBACK`.
 

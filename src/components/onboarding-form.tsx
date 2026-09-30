@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/client";
 
 export function OnboardingForm() {
@@ -43,11 +44,9 @@ export function OnboardingForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-12 text-white">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-7 shadow-2xl sm:p-9">
-        <span className="text-sm font-bold tracking-[0.2em] text-lime-400 uppercase">
-          Minha Quadra
-        </span>
+    <main className="flex min-h-screen items-center justify-center bg-[#0b3f34] px-5 py-12 text-white">
+      <div className="w-full max-w-lg rounded-3xl border border-white/15 bg-[#082f28] p-7 shadow-2xl sm:p-9">
+        <BrandLogo priority className="w-48 rounded-xl bg-white px-3 py-2" />
         <h1 className="mt-6 text-3xl font-bold">Cadastre sua arena</h1>
         <p className="mt-2 text-sm text-slate-400">
           Esses dados identificam seu espaço dentro do Minha Quadra.
@@ -61,7 +60,7 @@ export function OnboardingForm() {
               maxLength={120}
               value={arenaName}
               onChange={(event) => setArenaName(event.target.value)}
-              className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 outline-none focus:border-lime-400"
+              className="mt-2 block w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 outline-none focus:border-[#d8c29a]"
             />
           </label>
           <label className="block text-sm font-medium">
@@ -72,7 +71,7 @@ export function OnboardingForm() {
               value={slug}
               onChange={(event) => setSlug(event.target.value.toLowerCase())}
               placeholder="exemplo-arena-central"
-              className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 outline-none focus:border-lime-400"
+              className="mt-2 block w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 outline-none focus:border-[#d8c29a]"
             />
             <span className="mt-1 block text-xs text-slate-500">
               Use letras minúsculas, números e hífens.
@@ -87,7 +86,7 @@ export function OnboardingForm() {
               autoComplete="name"
               value={ownerName}
               onChange={(event) => setOwnerName(event.target.value)}
-              className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 outline-none focus:border-lime-400"
+              className="mt-2 block w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 outline-none focus:border-[#d8c29a]"
             />
           </label>
           {error && (
@@ -98,7 +97,7 @@ export function OnboardingForm() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-lime-400 px-4 py-3 font-semibold text-slate-950 hover:bg-lime-300 disabled:opacity-60"
+            className="w-full rounded-xl bg-[#d8c29a] px-4 py-3 font-semibold text-[#0b3f34] hover:bg-[#ead9b8] disabled:opacity-60"
           >
             {busy ? "Aguarde..." : "Criar arena"}
           </button>

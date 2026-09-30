@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
+import { getDemoUrl } from "@/lib/public-config";
 
 type IconName =
   | "calendar"
@@ -70,11 +72,7 @@ function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
 }
 
 function Brand() {
-  return (
-    <Link className="brand" href="/" aria-label="Minha Quadra, início">
-      <span className="brand-art" aria-hidden="true" />
-    </Link>
-  );
+  return <BrandLogo priority className="brand w-52" />;
 }
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -104,8 +102,8 @@ const features: { icon: IconName; title: string; text: string }[] = [
   },
   {
     icon: "card",
-    title: "Pagamentos integrados",
-    text: "Acompanhe os pagamentos das reservas com mais praticidade para todos.",
+    title: "Pagamentos sob controle",
+    text: "Registre cobranças manuais, estornos e acompanhe a situação de cada reserva.",
   },
   {
     icon: "court",
@@ -122,23 +120,23 @@ const features: { icon: IconName; title: string; text: string }[] = [
 const steps: { icon: IconName; title: string; text: string }[] = [
   {
     icon: "court",
-    title: "Escolha da quadra",
-    text: "Seu cliente encontra a quadra ideal e consulta as informações disponíveis.",
+    title: "Cadastre o cliente",
+    text: "Sua equipe encontra ou registra o cliente sem perder o histórico da relação.",
   },
   {
     icon: "calendar",
-    title: "Seleção do horário",
-    text: "Ele escolhe uma data e um horário livre na agenda, sem troca de mensagens.",
+    title: "Escolha o horário",
+    text: "Consulte a disponibilidade e reserve a quadra em uma agenda centralizada.",
   },
   {
     icon: "card",
-    title: "Pagamento",
-    text: "A reserva segue para o pagamento de forma simples e organizada.",
+    title: "Registre a cobrança",
+    text: "Informe o pagamento manual e mantenha o financeiro ligado à reserva.",
   },
   {
     icon: "check",
-    title: "Confirmação",
-    text: "Todos recebem os detalhes e a agenda é atualizada automaticamente.",
+    title: "Acompanhe a operação",
+    text: "Faça check-in, conclua ou cancele com cada mudança registrada no sistema.",
   },
 ];
 
@@ -269,6 +267,8 @@ function Dashboard() {
 }
 
 export default function Home() {
+  const demoUrl = getDemoUrl();
+
   return (
     <div className="landing">
       <header className="site-header">
@@ -309,6 +309,7 @@ export default function Home() {
               alt="Quadra de areia ao pôr do sol"
               fill
               priority
+              loading="eager"
               sizes="(max-width: 760px) 100vw, 55vw"
             />
           </div>
@@ -327,9 +328,9 @@ export default function Home() {
                 </span>
               </h1>
               <p>
-                Centralize agendamentos, pagamentos, clientes e financeiro em um
-                só lugar. Mais controle para você. Uma experiência melhor para
-                quem joga.
+                Centralize agenda, clientes, pagamentos manuais e financeiro em
+                um só lugar. Mais controle para sua equipe e uma operação mais
+                organizada.
               </p>
               <div className="button-row">
                 <Link
@@ -464,12 +465,11 @@ export default function Home() {
         <section className="section journey" id="como-funciona">
           <div className="container">
             <div className="journey-intro">
-              <Eyebrow>DO PRIMEIRO CLIQUE À CONFIRMAÇÃO</Eyebrow>
-              <h2>Uma experiência simples para quem joga.</h2>
+              <Eyebrow>DO ATENDIMENTO AO FECHAMENTO</Eyebrow>
+              <h2>Um fluxo simples para quem administra.</h2>
               <p>
-                Seus clientes consultam horários, fazem a reserva e acompanham
-                os agendamentos. Sua agenda acompanha cada etapa
-                automaticamente.
+                Sua equipe consulta horários, cria reservas, registra cobranças
+                e acompanha cada etapa da operação sem depender de planilhas.
               </p>
             </div>
             <div className="steps">
@@ -485,8 +485,7 @@ export default function Home() {
               ))}
             </div>
             <p className="journey-note">
-              Menos mensagens perguntando se há horário. Mais tempo para cuidar
-              do seu espaço.
+              Menos informação espalhada. Mais tempo para cuidar do seu espaço.
             </p>
           </div>
         </section>
@@ -552,8 +551,8 @@ export default function Home() {
                 realidade do seu espaço.
               </p>
               <p>
-                Da quadra independente ao complexo esportivo com várias
-                unidades: tudo no lugar certo desde o primeiro acesso.
+                Da quadra independente ao complexo esportivo com várias quadras:
+                tudo no lugar certo desde o primeiro acesso.
               </p>
               <Link className="button button-dark" href="/signup">
                 Organizar minha quadra <Icon name="arrow" size={18} />
@@ -607,11 +606,12 @@ export default function Home() {
               </details>
               <details>
                 <summary>
-                  O pagamento é integrado?<span>+</span>
+                  O sistema recebe pagamentos online?<span>+</span>
                 </summary>
                 <p>
-                  O sistema reúne as informações de pagamento junto às reservas
-                  para facilitar o acompanhamento da operação.
+                  Ainda não. Nesta etapa, a equipe registra Pix, dinheiro,
+                  crédito ou débito manualmente e acompanha pagamentos e
+                  estornos junto às reservas.
                 </p>
               </details>
               <details>
@@ -642,12 +642,22 @@ export default function Home() {
                 >
                   Começar agora <Icon name="arrow" size={19} />
                 </Link>
-                <Link
-                  className="button button-light button-large"
-                  href="/signup?interesse=demonstracao"
-                >
-                  Solicitar demonstração
-                </Link>
+                {demoUrl ? (
+                  <a
+                    className="button button-light button-large"
+                    href={demoUrl}
+                    rel="noreferrer"
+                  >
+                    Solicitar demonstração
+                  </a>
+                ) : (
+                  <a
+                    className="button button-light button-large"
+                    href="#recursos"
+                  >
+                    Ver recursos
+                  </a>
+                )}
               </div>
               <div className="cta-points">
                 <span>
