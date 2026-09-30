@@ -133,6 +133,16 @@ export default async function AuditPage({
           </Link>
         ))}
       </div>
+      <a
+        href={`/api/audit/export?type=${selected.type}`}
+        download="auditoria.csv"
+        className="mt-4 inline-block rounded-lg border border-white/20 px-4 py-2 text-sm hover:bg-white/10"
+      >
+        Exportar auditoria em CSV
+      </a>
+      <p className="mt-2 text-xs text-slate-400">
+        Inclui todos os eventos do tipo selecionado, com horários em UTC.
+      </p>
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
         <div className="flex justify-between gap-3 border-b border-white/10 px-5 py-4">
           <h2 className="font-semibold">Eventos</h2>

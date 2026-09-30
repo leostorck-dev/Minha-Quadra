@@ -1,9 +1,20 @@
 import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
+import { collectById } from "@/lib/database/pagination";
 import type { AuditFilters } from "./validation";
 
 type AuditRow = Database["public"]["Tables"]["audit_logs"]["Row"];
+type AuditExportRow = Pick<
+  AuditRow,
+  | "id"
+  | "event"
+  | "entity_type"
+  | "entity_id"
+  | "actor_id"
+  | "actor_name"
+  | "created_at"
+>;
 
 export type AuditLog = {
   id: string;
@@ -15,6 +26,53 @@ export type AuditLog = {
   details: AuditRow["details"];
   createdAt: string;
 };
+export type AuditExportLog = Omit<AuditLog, "details">;
+
+function toAuditExportLog(row: AuditExportRow): AuditExportLog {
+  return {
+    id: row.id,
+    event: row.event,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    actorId: row.actor_id,
+    actorName: row.actor_name,
+    createdAt: row.created_at,
+  };
+}
+
+function toAuditLog(row: AuditRow): AuditLog {
+  return {
+    ...toAuditExportLog(row),
+    details: row.details,
+  };
+}
+
+export async function exportAuditLogs(
+  context: AuthContext,
+  type: AuditFilters["type"],
+) {
+  const supabase = await createClient();
+  const rows = await collectById<AuditExportRow>((after) => {
+    let query = supabase
+      .from("audit_logs")
+      .select(
+        "id, event, entity_type, entity_id, actor_id, actor_name, created_at",
+      )
+      .eq("tenant_id", context.tenantId)
+      .order("id", { ascending: true })
+      .limit(200);
+    if (type !== "all") query = query.eq("entity_type", type);
+    if (after) query = query.gt("id", after);
+    return query;
+  }, "Não foi possível exportar a auditoria.");
+  return rows
+    .map(toAuditExportLog)
+    .sort(
+      (a, b) =>
+        Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
+        b.id.localeCompare(a.id),
+    );
+}
 
 export async function listAuditLogs(
   context: AuthContext,
@@ -34,16 +92,7 @@ export async function listAuditLogs(
     .range(from, from + pageSize - 1);
   if (error) throw new Error("Não foi possível carregar a auditoria.");
   return {
-    items: ((data ?? []) as AuditRow[]).map((row): AuditLog => ({
-      id: row.id,
-      event: row.event,
-      entityType: row.entity_type,
-      entityId: row.entity_id,
-      actorId: row.actor_id,
-      actorName: row.actor_name,
-      details: row.details,
-      createdAt: row.created_at,
-    })),
+    items: ((data ?? []) as AuditRow[]).map(toAuditLog),
     total: count ?? 0,
     page: filters.page,
     pageSize,
