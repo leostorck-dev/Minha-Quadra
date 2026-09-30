@@ -120,11 +120,21 @@ export function apiError(error: unknown) {
       404,
     );
   }
+
+  const errorId = crypto.randomUUID();
+  console.error("Erro não tratado na API", {
+    errorId,
+    name: error instanceof Error ? error.name : "UnknownError",
+    message: error instanceof Error ? error.message : "Valor não reconhecido",
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+
   return privateJson(
     {
       error: {
         code: "INTERNAL_ERROR",
         message: "Não foi possível concluir a operação.",
+        errorId,
       },
     },
     500,

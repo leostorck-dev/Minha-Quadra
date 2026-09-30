@@ -22,11 +22,20 @@ const labels: Record<string, string> = {
 
 export function SettingsPanel({
   arenaName,
+  arenaSlug,
+  publicPage,
   members: initialMembers,
   invites: initialInvites,
   ownerId,
 }: {
   arenaName: string;
+  arenaSlug: string;
+  publicPage: {
+    enabled: boolean;
+    whatsapp: string;
+    address: string;
+    instructions: string;
+  };
   members: Member[];
   invites: Invite[];
   ownerId: string;
@@ -37,11 +46,15 @@ export function SettingsPanel({
   const [invites, setInvites] = useState(initialInvites);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("RECEPTIONIST");
+  const [publicEnabled, setPublicEnabled] = useState(publicPage.enabled);
+  const [whatsapp, setWhatsapp] = useState(publicPage.whatsapp);
+  const [address, setAddress] = useState(publicPage.address);
+  const [instructions, setInstructions] = useState(publicPage.instructions);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  async function request(method: string, body: Record<string, string>) {
+  async function request(method: string, body: Record<string, unknown>) {
     setBusy(true);
     setError("");
     setMessage("");
@@ -84,6 +97,24 @@ export function SettingsPanel({
       setInvites((current) => [result.invite, ...current]);
       setEmail("");
       setMessage("Convite criado. Copie o link e envie à pessoa.");
+    }
+  }
+  async function savePublicPage(event: FormEvent) {
+    event.preventDefault();
+    const result = await request("PATCH", {
+      action: "public-page",
+      enabled: publicEnabled,
+      whatsapp,
+      address,
+      instructions,
+    });
+    if (result) {
+      setMessage(
+        publicEnabled
+          ? "Página de reservas publicada."
+          : "Página de reservas desativada.",
+      );
+      router.refresh();
     }
   }
   async function revoke(id: string) {
@@ -159,6 +190,106 @@ export function SettingsPanel({
           >
             Salvar
           </button>
+        </form>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-[#d8c29a]/25 bg-slate-900">
+        <div className="border-b border-white/10 px-6 py-5 sm:flex sm:items-start sm:justify-between sm:gap-5">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.16em] text-[#d8c29a] uppercase">
+              Reservas públicas
+            </p>
+            <h2 className="mt-2 text-xl font-semibold">
+              Página para seus jogadores
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              O jogador escolhe um horário disponível e envia um pedido. Você
+              aprova antes de a reserva entrar na agenda.
+            </p>
+          </div>
+          <span
+            className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold sm:mt-0 ${
+              publicEnabled
+                ? "bg-lime-400/15 text-lime-300"
+                : "bg-white/10 text-slate-300"
+            }`}
+          >
+            {publicEnabled ? "Publicada" : "Desativada"}
+          </span>
+        </div>
+        <form onSubmit={savePublicPage} className="space-y-5 p-6">
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-slate-800/60 p-4">
+            <input
+              type="checkbox"
+              checked={publicEnabled}
+              onChange={(event) => setPublicEnabled(event.target.checked)}
+              className="mt-0.5 h-5 w-5 accent-lime-400"
+            />
+            <span>
+              <span className="block font-semibold">
+                Aceitar solicitações online
+              </span>
+              <span className="mt-1 block text-sm text-slate-400">
+                Ative quando as quadras, preços e horários estiverem revisados.
+              </span>
+            </span>
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm">
+              WhatsApp da arena
+              <input
+                type="tel"
+                inputMode="tel"
+                value={whatsapp}
+                onChange={(event) => setWhatsapp(event.target.value)}
+                placeholder="(31) 99999-9999"
+                className="mt-2 w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3"
+              />
+            </label>
+            <label className="text-sm">
+              Endereço
+              <input
+                value={address}
+                minLength={3}
+                maxLength={180}
+                onChange={(event) => setAddress(event.target.value)}
+                placeholder="Rua, número e bairro"
+                className="mt-2 w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3"
+              />
+            </label>
+          </div>
+          <label className="block text-sm">
+            Orientações para os jogadores
+            <textarea
+              value={instructions}
+              minLength={3}
+              maxLength={500}
+              rows={3}
+              onChange={(event) => setInstructions(event.target.value)}
+              placeholder="Chegue com antecedência, traga seu equipamento…"
+              className="mt-2 w-full resize-y rounded-lg border border-white/15 bg-slate-800 px-4 py-3"
+            />
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              disabled={busy}
+              className="rounded-lg bg-lime-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            >
+              Salvar página
+            </button>
+            {publicEnabled && (
+              <a
+                href={`/reservar/${arenaSlug}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg border border-white/15 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
+              >
+                Abrir página pública
+              </a>
+            )}
+          </div>
+          <p className="break-all font-mono text-xs text-slate-500">
+            /reservar/{arenaSlug}
+          </p>
         </form>
       </div>
       <div className="rounded-2xl border border-white/10 bg-slate-900 p-6">

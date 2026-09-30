@@ -12,33 +12,116 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      arena_mp_connections: {
+        Row: {
+          connected_at: string
+          connected_by: string
+          credentials: string
+          expires_at: string
+          live_mode: boolean
+          provider_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          connected_at: string
+          connected_by: string
+          credentials: string
+          expires_at: string
+          live_mode: boolean
+          provider_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          connected_at?: string
+          connected_by?: string
+          credentials?: string
+          expires_at?: string
+          live_mode?: boolean
+          provider_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_mp_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arena_mp_oauth_attempts: {
+        Row: {
+          browser_hash: string
+          expires_at: string
+          owner_id: string
+          state_hash: string
+          tenant_id: string
+          verifier: string
+        }
+        Insert: {
+          browser_hash: string
+          expires_at: string
+          owner_id: string
+          state_hash: string
+          tenant_id: string
+          verifier: string
+        }
+        Update: {
+          browser_hash?: string
+          expires_at?: string
+          owner_id?: string
+          state_hash?: string
+          tenant_id?: string
+          verifier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_mp_oauth_attempts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arena_public_pages: {
+        Row: {
+          address: string | null
+          enabled: boolean
+          logo_updated_at: string | null
+          player_instructions: string | null
+          tenant_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          enabled?: boolean
+          logo_updated_at?: string | null
+          player_instructions?: string | null
+          tenant_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          enabled?: boolean
+          logo_updated_at?: string | null
+          player_instructions?: string | null
+          tenant_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_public_pages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           actor_id: string
@@ -854,6 +937,82 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_booking_requests: {
+        Row: {
+          court_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decline_reason: string | null
+          end_at: string
+          id: string
+          player_name: string
+          player_phone: string
+          price: number
+          reservation_id: string | null
+          start_at: string
+          status: string
+          tenant_id: string
+          token_hash: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decline_reason?: string | null
+          end_at: string
+          id?: string
+          player_name: string
+          player_phone: string
+          price: number
+          reservation_id?: string | null
+          start_at: string
+          status?: string
+          tenant_id: string
+          token_hash: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decline_reason?: string | null
+          end_at?: string
+          id?: string
+          player_name?: string
+          player_phone?: string
+          price?: number
+          reservation_id?: string | null
+          start_at?: string
+          status?: string
+          tenant_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_booking_requests_tenant_id_court_id_fkey"
+            columns: ["tenant_id", "court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "public_booking_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_booking_requests_tenant_id_reservation_id_fkey"
+            columns: ["tenant_id", "reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["tenant_id", "id"]
           },
         ]
       }
@@ -2074,6 +2233,10 @@ export type Database = {
         }
       }
       dashboard_overview: { Args: never; Returns: Json }
+      decide_public_booking_request: {
+        Args: { p_approve: boolean; p_id: string; p_reason: string }
+        Returns: string
+      }
       draw_tournament_category: {
         Args: {
           p_category_id: string
@@ -2139,6 +2302,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_public_arena: {
+        Args: { p_court?: string; p_date?: string; p_slug: string }
+        Returns: Json
+      }
+      get_public_arena_brand: { Args: { p_slug: string }; Returns: Json }
       join_arena: {
         Args: { member_name: string; p_token: string }
         Returns: string
@@ -2205,6 +2373,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      public_booking_request_status: {
+        Args: { p_token: string }
+        Returns: Json
       }
       record_knockout_result: {
         Args: {
@@ -2401,6 +2573,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      submit_public_booking_request: {
+        Args: {
+          p_court: string
+          p_name: string
+          p_phone: string
+          p_slug: string
+          p_start: string
+          p_token: string
+          p_website?: string
+        }
+        Returns: Json
+      }
       withdraw_tournament_team: {
         Args: { p_team_id: string; p_tournament_id: string }
         Returns: {
@@ -2555,9 +2739,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       reservation_status: [

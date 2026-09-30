@@ -5,3 +5,5 @@ for select to authenticated using (
     where class_id in (select id from public.class_sessions)
   )
 );
+
+;

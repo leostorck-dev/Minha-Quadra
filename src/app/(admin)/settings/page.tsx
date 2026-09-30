@@ -8,8 +8,17 @@ export default async function SettingsPage() {
   if (!context) redirect("/login");
   if (context.role !== "OWNER") redirect("/dashboard");
   const supabase = await createClient();
-  const [arena, members, invites] = await Promise.all([
-    supabase.from("tenants").select("name").eq("id", context.tenantId).single(),
+  const [arena, publicPage, members, invites] = await Promise.all([
+    supabase
+      .from("tenants")
+      .select("name, slug")
+      .eq("id", context.tenantId)
+      .single(),
+    supabase
+      .from("arena_public_pages")
+      .select("enabled, whatsapp, address, player_instructions")
+      .eq("tenant_id", context.tenantId)
+      .maybeSingle(),
     supabase
       .from("profiles")
       .select("id, name, email, role")
@@ -22,11 +31,24 @@ export default async function SettingsPage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
   ]);
-  if (arena.error || members.error || invites.error || !arena.data)
+  if (
+    arena.error ||
+    publicPage.error ||
+    members.error ||
+    invites.error ||
+    !arena.data
+  )
     throw new Error("Não foi possível carregar as configurações.");
   return (
     <SettingsPanel
       arenaName={arena.data.name}
+      arenaSlug={arena.data.slug}
+      publicPage={{
+        enabled: publicPage.data?.enabled ?? false,
+        whatsapp: publicPage.data?.whatsapp ?? "",
+        address: publicPage.data?.address ?? "",
+        instructions: publicPage.data?.player_instructions ?? "",
+      }}
       members={members.data ?? []}
       invites={invites.data ?? []}
       ownerId={context.userId}

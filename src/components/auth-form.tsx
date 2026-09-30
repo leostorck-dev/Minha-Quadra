@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "login" | "signup";
@@ -20,6 +21,7 @@ export function AuthForm({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const invite =
     typeof inviteToken === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -80,14 +82,16 @@ export function AuthForm({
   const isLogin = mode === "login";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-12 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-7 shadow-2xl sm:p-9">
-        <Link
-          href="/"
-          className="text-sm font-bold tracking-[0.2em] text-lime-400 uppercase"
-        >
-          Minha Quadra
-        </Link>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0b3f34] px-5 py-12 text-white">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 15% 20%, #d8c29a 0, transparent 28%), radial-gradient(circle at 85% 80%, #0f8a59 0, transparent 30%)",
+        }}
+      />
+      <div className="relative w-full max-w-md rounded-3xl border border-white/15 bg-[#082f28]/90 p-7 shadow-2xl backdrop-blur sm:p-9">
+        <BrandLogo priority className="w-48 rounded-xl bg-white px-3 py-2" />
         <h1 className="mt-6 text-3xl font-bold tracking-tight">
           {isLogin ? "Entre na sua arena" : "Crie sua conta"}
         </h1>
@@ -108,20 +112,35 @@ export function AuthForm({
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 text-white outline-none focus:border-lime-400"
+              className="mt-2 block w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-[#d8c29a] focus:ring-2 focus:ring-[#d8c29a]/20"
             />
           </label>
           <label className="block text-sm font-medium">
             Senha
-            <input
-              type="password"
-              autoComplete={isLogin ? "current-password" : "new-password"}
-              minLength={6}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-2 block w-full rounded-lg border border-white/15 bg-slate-800 px-4 py-3 text-white outline-none focus:border-lime-400"
-            />
+            <span className="relative mt-2 block">
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                minLength={8}
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="block w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 pr-20 text-white outline-none focus:border-[#d8c29a] focus:ring-2 focus:ring-[#d8c29a]/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 px-4 text-xs font-semibold text-[#d8c29a] hover:text-white"
+              >
+                {showPassword ? "Ocultar" : "Mostrar"}
+              </button>
+            </span>
+            {!isLogin && (
+              <span className="mt-2 block text-xs font-normal text-slate-400">
+                Use ao menos 8 caracteres, com letras e números.
+              </span>
+            )}
           </label>
           {error && (
             <p role="alert" className="text-sm text-rose-300">
@@ -136,7 +155,7 @@ export function AuthForm({
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-lime-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-lime-300 disabled:opacity-60"
+            className="w-full rounded-xl bg-[#d8c29a] px-4 py-3 font-semibold text-[#0b3f34] transition hover:bg-[#ead9b8] disabled:opacity-60"
           >
             {busy ? "Aguarde..." : isLogin ? "Entrar" : "Criar conta"}
           </button>
@@ -145,7 +164,7 @@ export function AuthForm({
         {isLogin && (
           <Link
             href="/forgot-password"
-            className="mt-5 block text-center text-sm text-slate-300 hover:text-lime-400"
+            className="mt-5 block text-center text-sm text-slate-300 hover:text-[#d8c29a]"
           >
             Esqueceu a senha?
           </Link>
@@ -155,7 +174,7 @@ export function AuthForm({
           {isLogin ? "Ainda não tem conta? " : "Já tem conta? "}
           <Link
             href={`${isLogin ? "/signup" : "/login"}${invite ? `?invite=${invite}` : ""}`}
-            className="font-semibold text-lime-400 hover:underline"
+            className="font-semibold text-[#d8c29a] hover:underline"
           >
             {isLogin ? "Cadastre-se" : "Entrar"}
           </Link>

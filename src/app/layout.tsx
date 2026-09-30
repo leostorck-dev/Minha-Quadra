@@ -13,15 +13,36 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Minha Quadra | Sua quadra organizada. Seu negócio crescendo.",
+  title: {
+    default: "Minha Quadra | Gestão de arenas esportivas",
+    template: "%s | Minha Quadra",
+  },
   description:
-    "Centralize agendamentos, pagamentos, clientes e financeiro da sua quadra esportiva em um só lugar.",
+    "Centralize agenda, clientes, pagamentos manuais e financeiro da sua arena esportiva em um só lugar.",
+  applicationName: "Minha Quadra",
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Minha Quadra",
+    title: "Minha Quadra | Gestão de arenas esportivas",
+    description:
+      "Agenda, clientes, pagamentos manuais e financeiro em um só lugar.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Minha Quadra | Gestão de arenas esportivas",
+    description:
+      "Agenda, clientes, pagamentos manuais e financeiro em um só lugar.",
+  },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="pt-BR"
+      data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

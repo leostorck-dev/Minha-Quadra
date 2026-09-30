@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin-nav";
+import { BrandLogo } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getAuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
 
 export default async function AdminLayout({
   children,
@@ -24,12 +30,17 @@ export default async function AdminLayout({
     .single();
   if (error || !tenant) throw new Error("Não foi possível carregar a arena.");
 
+  const roleLabels = {
+    OWNER: "Proprietário",
+    MANAGER: "Gerência",
+    RECEPTIONIST: "Recepção",
+    COACH: "Professor",
+  } as const;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white md:flex">
-      <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-slate-900 px-5 py-7 md:block">
-        <p className="mb-10 px-3 text-sm font-bold tracking-[0.2em] text-lime-400 uppercase">
-          Minha Quadra
-        </p>
+    <div className="min-h-screen bg-[#071d19] text-white md:flex">
+      <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-[#0b3f34] px-5 py-7 md:block">
+        <BrandLogo className="mb-9 w-full rounded-xl bg-white px-3 py-2" />
         <AdminNav role={context.role} />
       </aside>
       <div className="min-w-0 flex-1 pb-20 md:pb-0">
@@ -37,7 +48,7 @@ export default async function AdminLayout({
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">{tenant.name}</p>
             <p className="text-xs text-slate-400">
-              {context.role} ·{" "}
+              {roleLabels[context.role]} ·{" "}
               {tenant.status === "active" ? "Arena ativa" : "Arena suspensa"}
             </p>
           </div>
