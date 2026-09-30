@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { auditReport } from "../src/features/audit/reports.ts";
-import { parseAuditFilters } from "../src/features/audit/validation.ts";
+import {
+  auditDateWindow,
+  parseAuditFilters,
+} from "../src/features/audit/validation.ts";
 import { ValidationError } from "../src/lib/api/validation-error.ts";
 
 const entry = {
@@ -39,5 +42,71 @@ test("auditoria rejeita tipo inválido e aceita todos os tipos disponíveis", ()
   assert.throws(
     () => parseAuditFilters(new URLSearchParams({ type: "unknown" })),
     ValidationError,
+  );
+});
+
+test("período da auditoria valida calendário e ordem das datas", () => {
+  const filters = parseAuditFilters(
+    new URLSearchParams({ from: "2026-09-29", to: "2026-09-29" }),
+  );
+  assert.equal(filters.from, "2026-09-29");
+  assert.equal(filters.to, "2026-09-29");
+  assert.deepEqual(auditDateWindow(filters, "America/Sao_Paulo"), {
+    start: "2026-09-29T03:00:00Z",
+    end: "2026-09-30T03:00:00Z",
+  });
+  for (const from of ["2026-02-30", "2026-2-3", "invalida"]) {
+    assert.throws(
+      () => parseAuditFilters(new URLSearchParams({ from })),
+      ValidationError,
+    );
+  }
+  assert.throws(
+    () =>
+      parseAuditFilters(
+        new URLSearchParams({ from: "2026-09-30", to: "2026-09-29" }),
+      ),
+    ValidationError,
+  );
+});
+
+test("limites independentes e dias de horário de verão usam meia-noite local", () => {
+  assert.deepEqual(
+    auditDateWindow(
+      parseAuditFilters(
+        new URLSearchParams({ from: "2026-03-08", to: "2026-03-08" }),
+      ),
+      "America/New_York",
+    ),
+    {
+      start: "2026-03-08T05:00:00Z",
+      end: "2026-03-09T04:00:00Z",
+    },
+  );
+  assert.deepEqual(
+    auditDateWindow(
+      parseAuditFilters(
+        new URLSearchParams({ from: "2026-11-01", to: "2026-11-01" }),
+      ),
+      "America/New_York",
+    ),
+    {
+      start: "2026-11-01T04:00:00Z",
+      end: "2026-11-02T05:00:00Z",
+    },
+  );
+  assert.equal(
+    auditDateWindow(
+      parseAuditFilters(new URLSearchParams({ from: "2026-09-29" })),
+      "UTC",
+    ).end,
+    null,
+  );
+  assert.equal(
+    auditDateWindow(
+      parseAuditFilters(new URLSearchParams({ to: "2026-09-29" })),
+      "UTC",
+    ).start,
+    null,
   );
 });

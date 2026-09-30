@@ -2,7 +2,7 @@ import type { AuthContext } from "@/lib/auth/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { collectById } from "@/lib/database/pagination";
-import type { AuditFilters } from "./validation";
+import { auditDateWindow, type AuditFilters } from "./validation";
 
 type AuditRow = Database["public"]["Tables"]["audit_logs"]["Row"];
 type AuditExportRow = Pick<
@@ -49,9 +49,11 @@ function toAuditLog(row: AuditRow): AuditLog {
 
 export async function exportAuditLogs(
   context: AuthContext,
-  type: AuditFilters["type"],
+  filters: AuditFilters,
+  timezone: string,
 ) {
   const supabase = await createClient();
+  const window = auditDateWindow(filters, timezone);
   const rows = await collectById<AuditExportRow>((after) => {
     let query = supabase
       .from("audit_logs")
@@ -61,7 +63,9 @@ export async function exportAuditLogs(
       .eq("tenant_id", context.tenantId)
       .order("id", { ascending: true })
       .limit(200);
-    if (type !== "all") query = query.eq("entity_type", type);
+    if (filters.type !== "all") query = query.eq("entity_type", filters.type);
+    if (window.start) query = query.gte("created_at", window.start);
+    if (window.end) query = query.lt("created_at", window.end);
     if (after) query = query.gt("id", after);
     return query;
   }, "Não foi possível exportar a auditoria.");
@@ -77,8 +81,10 @@ export async function exportAuditLogs(
 export async function listAuditLogs(
   context: AuthContext,
   filters: AuditFilters,
+  timezone: string,
 ) {
   const supabase = await createClient();
+  const window = auditDateWindow(filters, timezone);
   const pageSize = 25;
   const from = (filters.page - 1) * pageSize;
   let query = supabase
@@ -86,6 +92,8 @@ export async function listAuditLogs(
     .select("*", { count: "exact" })
     .eq("tenant_id", context.tenantId);
   if (filters.type !== "all") query = query.eq("entity_type", filters.type);
+  if (window.start) query = query.gte("created_at", window.start);
+  if (window.end) query = query.lt("created_at", window.end);
   const { data, count, error } = await query
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })

@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listAuditLogs, type AuditLog } from "@/features/audit/service";
-import { parseAuditFilters, type AuditType } from "@/features/audit/validation";
+import {
+  parseAuditFilters,
+  type AuditFilters,
+  type AuditType,
+} from "@/features/audit/validation";
 import { getArenaTimezone } from "@/features/reservations/service";
 import { getAuthContext } from "@/lib/auth/context";
 
@@ -81,14 +85,23 @@ function eventDetails(item: AuditLog) {
   return null;
 }
 
-function auditHref(type: AuditType, page: number) {
-  return `/audit?type=${type}&page=${page}`;
+function auditQuery(filters: AuditFilters, page?: number) {
+  const params = new URLSearchParams({ type: filters.type });
+  if (page) params.set("page", String(page));
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return params.toString();
 }
 
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; page?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    page?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
   const context = await getAuthContext();
   if (!context) redirect("/login");
@@ -98,16 +111,16 @@ export default async function AuditPage({
   const params = new URLSearchParams();
   if (typeof values.type === "string") params.set("type", values.type);
   if (typeof values.page === "string") params.set("page", values.page);
+  if (typeof values.from === "string") params.set("from", values.from);
+  if (typeof values.to === "string") params.set("to", values.to);
   let selected;
   try {
     selected = parseAuditFilters(params);
   } catch {
     redirect("/audit");
   }
-  const [audit, timezone] = await Promise.all([
-    listAuditLogs(context, selected),
-    getArenaTimezone(context),
-  ]);
+  const timezone = await getArenaTimezone(context);
+  const audit = await listAuditLogs(context, selected, timezone);
   const dateFormat = new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
@@ -125,7 +138,7 @@ export default async function AuditPage({
         {filters.map((filter) => (
           <Link
             key={filter.value}
-            href={auditHref(filter.value, 1)}
+            href={`/audit?${auditQuery({ ...selected, type: filter.value }, 1)}`}
             aria-current={selected.type === filter.value ? "page" : undefined}
             className={`rounded-lg px-4 py-2 text-sm font-medium ${selected.type === filter.value ? "bg-lime-400 text-slate-950" : "border border-white/15 text-slate-300 hover:bg-white/10"}`}
           >
@@ -133,15 +146,58 @@ export default async function AuditPage({
           </Link>
         ))}
       </div>
+      <form
+        action="/audit"
+        method="get"
+        className="mt-5 flex flex-wrap items-end gap-3"
+      >
+        <input type="hidden" name="type" value={selected.type} />
+        <label className="text-sm text-slate-300">
+          Data inicial
+          <input
+            type="date"
+            name="from"
+            defaultValue={selected.from ?? ""}
+            className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-white"
+          />
+        </label>
+        <label className="text-sm text-slate-300">
+          Data final
+          <input
+            type="date"
+            name="to"
+            defaultValue={selected.to ?? ""}
+            className="mt-1 block rounded-lg border border-white/15 bg-slate-800 px-3 py-2 text-white"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-lg bg-lime-400 px-4 py-2 font-semibold text-slate-950"
+        >
+          Filtrar período
+        </button>
+        {(selected.from || selected.to) && (
+          <Link
+            href={`/audit?type=${selected.type}`}
+            className="rounded-lg border border-white/15 px-4 py-2 text-sm"
+          >
+            Limpar datas
+          </Link>
+        )}
+      </form>
+      <p className="mt-2 text-xs text-slate-400">
+        Datas no fuso da arena: {timezone.replaceAll("_", " ")}.
+      </p>
       <a
-        href={`/api/audit/export?type=${selected.type}`}
+        href={`/api/audit/export?${auditQuery(selected)}`}
         download="auditoria.csv"
         className="mt-4 inline-block rounded-lg border border-white/20 px-4 py-2 text-sm hover:bg-white/10"
       >
         Exportar auditoria em CSV
       </a>
       <p className="mt-2 text-xs text-slate-400">
-        Inclui todos os eventos do tipo selecionado, com horários em UTC.
+        Inclui todas as páginas do tipo e período selecionados, com horários em
+        UTC.
       </p>
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
         <div className="flex justify-between gap-3 border-b border-white/10 px-5 py-4">
@@ -187,7 +243,7 @@ export default async function AuditPage({
         <div className="mt-5 flex items-center justify-end gap-3 text-sm">
           {selected.page > 1 && (
             <Link
-              href={auditHref(selected.type, selected.page - 1)}
+              href={`/audit?${auditQuery(selected, selected.page - 1)}`}
               className="rounded-lg border border-white/15 px-3 py-2"
             >
               Anterior
@@ -198,7 +254,7 @@ export default async function AuditPage({
           </span>
           {selected.page * audit.pageSize < audit.total && (
             <Link
-              href={auditHref(selected.type, selected.page + 1)}
+              href={`/audit?${auditQuery(selected, selected.page + 1)}`}
               className="rounded-lg border border-white/15 px-3 py-2"
             >
               Próxima
