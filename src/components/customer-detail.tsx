@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CustomerEditor } from "@/components/customer-editor";
+import { CustomerReservationHistory } from "@/components/customer-reservation-history";
 import type { Customer } from "@/features/customers/service";
 
 export function CustomerDetail({ id }: { id: string }) {
@@ -126,6 +127,7 @@ export function CustomerDetail({ id }: { id: string }) {
         customer={customer}
         onSaved={setCustomer}
       />
+      <CustomerReservationHistory customerId={customer.id} />
     </section>
   );
 }

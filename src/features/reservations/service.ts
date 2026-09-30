@@ -8,6 +8,10 @@ import { getCourt } from "@/features/courts/service";
 import { getCustomer } from "@/features/customers/service";
 import { overlaps } from "./conflicts";
 import {
+  derivePaymentSituation,
+  type PaymentSituation,
+} from "./payment-situation";
+import {
   assertPaymentFilterPermission,
   filterReservationsByPayment,
   type PaymentSituationFilter,
@@ -48,7 +52,7 @@ export type Reservation = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  paymentSituation?: "pending" | "paid" | "refunded" | "cancelled" | "free";
+  paymentSituation?: PaymentSituation;
 };
 
 export class ReservationNotFoundError extends Error {
@@ -200,13 +204,11 @@ export async function listReservations(
     }
     for (const item of items) {
       if (item.kind !== "booking") continue;
-      item.paymentSituation =
-        statusByReservation.get(item.id) ??
-        (item.status === "cancelled"
-          ? "cancelled"
-          : item.price === 0
-            ? "free"
-            : "pending");
+      item.paymentSituation = derivePaymentSituation(
+        item.status,
+        item.price,
+        statusByReservation.get(item.id) ?? null,
+      );
     }
   }
   return {
