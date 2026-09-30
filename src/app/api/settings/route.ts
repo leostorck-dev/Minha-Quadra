@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/context";
 import { apiError, privateJson } from "@/lib/api/errors";
 import { ValidationError } from "@/lib/api/validation-error";
 import { createClient } from "@/lib/supabase/server";
+import { parsePublicPageSettings } from "@/features/public-bookings/validation";
 
 const roles = ["MANAGER", "RECEPTIONIST", "COACH"] as const;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,6 +73,26 @@ export async function PATCH(request: Request) {
         .single();
       if (error || !data) throw error ?? new Error("Arena não alterada.");
       return privateJson({ name: data.name });
+    }
+    if (body.action === "public-page") {
+      const input = parsePublicPageSettings(body);
+      const { data, error } = await supabase
+        .from("arena_public_pages")
+        .upsert(
+          {
+            tenant_id: context.tenantId,
+            enabled: input.enabled,
+            whatsapp: input.whatsapp,
+            address: input.address,
+            player_instructions: input.instructions,
+          },
+          { onConflict: "tenant_id" },
+        )
+        .select("enabled, whatsapp, address, player_instructions")
+        .single();
+      if (error || !data)
+        throw error ?? new Error("Página pública não alterada.");
+      return privateJson({ publicPage: data });
     }
     if (body.action === "revoke") {
       if (typeof body.id !== "string" || !uuid.test(body.id))

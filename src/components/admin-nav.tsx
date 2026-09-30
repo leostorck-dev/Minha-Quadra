@@ -21,7 +21,10 @@ export function AdminNav({ role }: { role: Role }) {
         ]
       : []),
     ...(role === "OWNER"
-      ? [{ href: "/settings", label: "Configurações" }]
+      ? [
+          { href: "/requests", label: "Solicitações" },
+          { href: "/settings", label: "Configurações" },
+        ]
       : []),
   ];
   const mobilePrimary = links.slice(0, 4);
